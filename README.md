@@ -11,7 +11,7 @@ Forge is a local-first coding assistant for Windows and Linux. It has a terminal
 
 ## Status
 
-Milestone 4 adds an opt-in shell tool. Shell execution is disabled by default, is restricted to approved workspace directories, has a bounded timeout, and captures limited output.
+Milestone 5 adds read-only Git tools for safe remote inspection: status, diff, and recent history. Forge will require an explicit approval flow before it can create commits.
 
 ## Development
 
