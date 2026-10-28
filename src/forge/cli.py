@@ -5,8 +5,12 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from forge.agent import ForgeAgent
 from forge import __version__
 from forge.config import load_config
+from forge.providers import OllamaProvider
+from forge.sessions import SessionStore
+from forge.tasks import Task, TaskQueue
 from forge.telegram import TelegramBot, TelegramMessage
 
 
@@ -44,15 +48,36 @@ def main(argv: list[str] | None = None) -> int:
         if not config.telegram.allowed_chat_ids:
             parser.error("Telegram needs at least one allowed_chat_ids entry.")
 
+        ollama = config.providers.get("ollama", {})
+        provider = OllamaProvider(
+            base_url=ollama.get("base_url", "http://localhost:11434"),
+            model=ollama.get("default_model", "llama3.2"),
+        )
+        forge_dir = Path.cwd() / ".forge"
+        forge_dir.mkdir(exist_ok=True)
+        agent = ForgeAgent(provider, SessionStore(forge_dir / "sessions.db"))
+        queue = TaskQueue()
+        bot = TelegramBot(config.telegram)
+
+        def complete(chat_id: int, task: Task) -> None:
+            if task.status == "completed":
+                bot.send_message(chat_id, task.result or "Task completed with no response.")
+            else:
+                bot.send_message(chat_id, f"Task {task.id} failed: {task.error}")
+
         def handler(message: TelegramMessage) -> str:
             if message.text == "/start":
-                return "Forge is connected. Agent tasks will be available soon."
+                return "Forge is connected. Send a coding question to begin."
             if message.text == "/status":
-                return "Forge transport is online. No task is currently running."
-            return "Forge received your message. Agent execution is not enabled yet."
+                return "Forge transport is online. New tasks run in the background."
+            task = queue.submit(
+                lambda: agent.respond(str(message.chat_id), message.text),
+                lambda completed: complete(message.chat_id, completed),
+            )
+            return f"Task {task.id} queued. I will send the result here."
 
         print("Forge Telegram transport is running. Press Ctrl+C to stop.")
-        TelegramBot(config.telegram).run(handler)
+        bot.run(handler)
         return 0
     return 1
 
