@@ -2,7 +2,7 @@
 
 Native Android companion for Forge, built with Kotlin and Jetpack Compose.
 
-The first screen is a local pairing shell. It will connect to the Forge desktop API over a private network in a later milestone; Telegram remains a separate remote-control channel to the same desktop Forge instance.
+The first screen is a local pairing shell. The desktop API begins with authenticated health and task-status endpoints; full task submission follows in a later milestone. Telegram remains a separate remote-control channel to the same desktop Forge instance.
 
 ## Open
 

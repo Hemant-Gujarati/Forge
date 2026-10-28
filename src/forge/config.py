@@ -24,11 +24,19 @@ class TelegramConfig:
 
 
 @dataclass
+class ServerConfig:
+    host: str = "127.0.0.1"
+    port: int = 7777
+    access_token: str = ""
+
+
+@dataclass
 class ForgeConfig:
     default_provider: str = "ollama"
     workspace_roots: list[str] = field(default_factory=lambda: ["."])
     providers: dict[str, dict[str, Any]] = field(default_factory=dict)
     telegram: TelegramConfig = field(default_factory=TelegramConfig)
+    server: ServerConfig = field(default_factory=ServerConfig)
     safety: SafetyConfig = field(default_factory=SafetyConfig)
 
 
@@ -41,6 +49,7 @@ def load_config(path: Path) -> ForgeConfig:
         workspace_roots=raw.get("workspace_roots", ["."]),
         providers=raw.get("providers", {}),
         telegram=TelegramConfig(**raw.get("telegram", {})),
+        server=ServerConfig(**raw.get("server", {})),
         safety=SafetyConfig(**raw.get("safety", {})),
     )
 

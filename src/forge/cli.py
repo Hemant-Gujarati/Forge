@@ -10,6 +10,7 @@ from forge import __version__
 from forge.config import load_config
 from forge.providers import OllamaProvider
 from forge.sessions import SessionStore
+from forge.server import ForgeApiServer
 from forge.tasks import Task, TaskQueue
 from forge.telegram import TelegramBot, TelegramMessage
 
@@ -26,6 +27,7 @@ def main(argv: list[str] | None = None) -> int:
     config_parser = subparsers.add_parser("config", help="Inspect configuration")
     config_parser.add_argument("action", choices=["show"])
     subparsers.add_parser("telegram", help="Run the Telegram remote-control transport")
+    subparsers.add_parser("serve", help="Run the local API for the native Android app")
     args = parser.parse_args(argv)
     config = load_config(_config_path(args.config))
 
@@ -91,6 +93,12 @@ def main(argv: list[str] | None = None) -> int:
 
         print("Forge Telegram transport is running. Press Ctrl+C to stop.")
         bot.run(handler)
+        return 0
+    if args.command == "serve":
+        if config.server.host not in {"127.0.0.1", "localhost", "::1"} and not config.server.access_token:
+            parser.error("A server.access_token is required when listening beyond localhost.")
+        print(f"Forge API listening on http://{config.server.host}:{config.server.port}")
+        ForgeApiServer(TaskQueue(), config.server.access_token).serve(config.server.host, config.server.port)
         return 0
     return 1
 

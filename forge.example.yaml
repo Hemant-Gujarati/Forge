@@ -12,6 +12,11 @@ telegram:
   bot_token: ""
   allowed_chat_ids: []
 
+server:
+  host: 127.0.0.1
+  port: 7777
+  access_token: ""
+
 safety:
   mode: ask
   allow_shell: false
