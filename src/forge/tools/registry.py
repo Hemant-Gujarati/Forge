@@ -7,16 +7,20 @@ from typing import Any
 
 from forge.tools.files import FileTools
 from forge.tools.git import GitTools
+from forge.approvals import ApprovalStore
 
 
 class ToolRegistry:
-    def __init__(self, files: FileTools, git: GitTools) -> None:
+    def __init__(self, files: FileTools, git: GitTools, approvals: ApprovalStore) -> None:
         self.files = files
         self.git = git
+        self.approvals = approvals
 
     def definitions(self) -> list[dict[str, Any]]:
         return [
             self._definition("read_file", {"path": {"type": "string"}}, ["path"]),
+            self._definition("write_file", {"path": {"type": "string"}, "content": {"type": "string"}}, ["path", "content"]),
+            self._definition("edit_file", {"path": {"type": "string"}, "old_text": {"type": "string"}, "new_text": {"type": "string"}}, ["path", "old_text", "new_text"]),
             self._definition("list_directory", {"path": {"type": "string"}}, []),
             self._definition("git_status", {}, []),
             self._definition("git_diff", {"staged": {"type": "boolean"}}, []),
@@ -27,6 +31,8 @@ class ToolRegistry:
         try:
             if name == "read_file":
                 result: Any = self.files.read_file(str(arguments["path"]))
+            elif name in {"write_file", "edit_file"}:
+                return self._request_file_approval(name, arguments)
             elif name == "list_directory":
                 result = self.files.list_directory(str(arguments.get("path", ".")))
             elif name == "git_status":
@@ -40,6 +46,14 @@ class ToolRegistry:
             return json.dumps({"ok": True, "result": result})
         except (KeyError, OSError, PermissionError, RuntimeError, ValueError) as error:
             return json.dumps({"ok": False, "error": str(error)})
+
+    def _request_file_approval(self, action: str, arguments: dict[str, Any]) -> str:
+        path = str(arguments.get("path", ""))
+        if not path:
+            raise ValueError("A file path is required")
+        summary = f"{action}: {path}"
+        approval = self.approvals.request(action, summary, dict(arguments))
+        return json.dumps({"ok": False, "approval_id": approval.id, "error": "Approval required before this file change."})
 
     @staticmethod
     def _definition(name: str, properties: dict[str, Any], required: list[str]) -> dict[str, Any]:

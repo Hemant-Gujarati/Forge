@@ -1,5 +1,6 @@
 from forge.agent import ForgeAgent
 from forge.providers.ollama import ProviderResponse
+from forge.approvals import ApprovalStore
 from forge.safety import WorkspaceGuard
 from forge.sessions import SessionStore
 from forge.tools.files import FileTools
@@ -16,7 +17,7 @@ class FakeProvider:
 def test_agent_persists_conversation(tmp_path) -> None:
     store = SessionStore(":memory:")
     guard = WorkspaceGuard([str(tmp_path)], tmp_path)
-    tools = ToolRegistry(FileTools(guard), GitTools(guard))
+    tools = ToolRegistry(FileTools(guard), GitTools(guard), ApprovalStore(":memory:"))
     agent = ForgeAgent(FakeProvider(), store, tools)  # type: ignore[arg-type]
     assert agent.respond("chat-1", "Hello") == "Hi from Forge"
     assert store.history("chat-1")[-1]["content"] == "Hi from Forge"

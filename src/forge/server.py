@@ -20,11 +20,13 @@ class ForgeApiServer:
         access_token: str,
         submit_task: Callable[[str], Task] | None = None,
         approvals: ApprovalStore | None = None,
+        resolve_approval: Callable[[str, bool], tuple[object | None, str]] | None = None,
     ) -> None:
         self.tasks = tasks
         self.access_token = access_token
         self.submit_task = submit_task
         self.approvals = approvals
+        self.resolve_approval = resolve_approval
 
     def create_server(self, host: str, port: int) -> ThreadingHTTPServer:
         api = self
@@ -54,10 +56,14 @@ class ForgeApiServer:
                     parts = self.path.split("/")
                     if len(parts) != 5 or parts[-1] not in {"approve", "reject"}:
                         return self.respond(HTTPStatus.NOT_FOUND, {"error": "not_found"})
-                    approval = api.approvals.decide(parts[-2], parts[-1] == "approve")
+                    if api.resolve_approval is None:
+                        approval = api.approvals.decide(parts[-2], parts[-1] == "approve")
+                        message = "Approval updated."
+                    else:
+                        approval, message = api.resolve_approval(parts[-2], parts[-1] == "approve")
                     if approval is None:
                         return self.respond(HTTPStatus.NOT_FOUND, {"error": "pending_approval_not_found"})
-                    return self.respond(HTTPStatus.OK, approval.__dict__)
+                    return self.respond(HTTPStatus.OK, {"approval": approval.__dict__, "message": message})
                 if self.path != "/v1/tasks":
                     return self.respond(HTTPStatus.NOT_FOUND, {"error": "not_found"})
                 if not api.is_authorized(self.headers.get("Authorization", "")):

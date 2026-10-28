@@ -73,10 +73,8 @@ def main(argv: list[str] | None = None) -> int:
             if message.text.startswith("/approve ") or message.text.startswith("/reject "):
                 approve = message.text.startswith("/approve ")
                 approval_id = message.text.split(maxsplit=1)[1]
-                result = runtime.approvals.decide(approval_id, approve)
-                if result is None:
-                    return "No pending approval found with that ID."
-                return f"{result.action} {result.status}."
+                _, result = runtime.resolve_approval(approval_id, approve)
+                return result
             if message.text.startswith("/status"):
                 _, *parts = message.text.split(maxsplit=1)
                 if not parts:
@@ -105,6 +103,7 @@ def main(argv: list[str] | None = None) -> int:
             config.server.access_token,
             lambda prompt: runtime.submit("android", prompt),
             runtime.approvals,
+            runtime.resolve_approval,
         ).serve(config.server.host, config.server.port)
         return 0
     return 1

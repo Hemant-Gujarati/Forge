@@ -6,7 +6,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from forge.agent import ForgeAgent
-from forge.approvals import ApprovalStore
+from forge.approvals import Approval, ApprovalStore
 from forge.config import ForgeConfig
 from forge.providers import OllamaProvider
 from forge.sessions import SessionStore
@@ -28,7 +28,8 @@ class ForgeRuntime:
         state_directory.mkdir(exist_ok=True)
         self.approvals = ApprovalStore(state_directory / "forge.db")
         guard = WorkspaceGuard(config.workspace_roots, working_directory)
-        tools = ToolRegistry(FileTools(guard), GitTools(guard))
+        self.files = FileTools(guard)
+        tools = ToolRegistry(self.files, GitTools(guard), self.approvals)
         self.agent = ForgeAgent(provider, SessionStore(state_directory / "sessions.db"), tools)
         self.tasks = TaskQueue()
 
@@ -37,3 +38,24 @@ class ForgeRuntime:
             lambda: self.agent.respond(session_id, prompt),
             on_complete or (lambda task: None),
         )
+
+    def resolve_approval(self, approval_id: str, approve: bool) -> tuple[Approval | None, str]:
+        approval = self.approvals.decide(approval_id, approve)
+        if approval is None:
+            return None, "No pending approval found with that ID."
+        if not approve:
+            return approval, f"{approval.action} rejected."
+        try:
+            if approval.action == "write_file":
+                result = self.files.write_file(str(approval.payload["path"]), str(approval.payload["content"]))
+            elif approval.action == "edit_file":
+                result = self.files.edit_file(
+                    str(approval.payload["path"]),
+                    str(approval.payload["old_text"]),
+                    str(approval.payload["new_text"]),
+                )
+            else:
+                return approval, f"{approval.action} approved. No executor is available yet."
+            return approval, result
+        except (KeyError, OSError, PermissionError, ValueError) as error:
+            return approval, f"{approval.action} was approved but failed: {error}"

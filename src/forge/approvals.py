@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from threading import Lock
@@ -14,6 +15,7 @@ class Approval:
     id: str
     action: str
     summary: str
+    payload: dict[str, object]
     status: str
 
 
@@ -23,16 +25,19 @@ class ApprovalStore:
         self.lock = Lock()
         with self.lock:
             self.connection.execute(
-                "CREATE TABLE IF NOT EXISTS approvals (id TEXT PRIMARY KEY, action TEXT, summary TEXT, status TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP)"
+                "CREATE TABLE IF NOT EXISTS approvals (id TEXT PRIMARY KEY, action TEXT, summary TEXT, payload TEXT NOT NULL DEFAULT '{}', status TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP)"
             )
+            columns = {row[1] for row in self.connection.execute("PRAGMA table_info(approvals)")}
+            if "payload" not in columns:
+                self.connection.execute("ALTER TABLE approvals ADD COLUMN payload TEXT NOT NULL DEFAULT '{}'")
             self.connection.commit()
 
-    def request(self, action: str, summary: str) -> Approval:
-        approval = Approval(uuid4().hex[:8], action, summary, "pending")
+    def request(self, action: str, summary: str, payload: dict[str, object] | None = None) -> Approval:
+        approval = Approval(uuid4().hex[:8], action, summary, payload or {}, "pending")
         with self.lock:
             self.connection.execute(
-                "INSERT INTO approvals(id, action, summary, status) VALUES (?, ?, ?, ?)",
-                (approval.id, approval.action, approval.summary, approval.status),
+                "INSERT INTO approvals(id, action, summary, payload, status) VALUES (?, ?, ?, ?, ?)",
+                (approval.id, approval.action, approval.summary, json.dumps(approval.payload), approval.status),
             )
             self.connection.commit()
         return approval
@@ -40,10 +45,10 @@ class ApprovalStore:
     def list(self, status: str = "pending") -> list[Approval]:
         with self.lock:
             rows = self.connection.execute(
-                "SELECT id, action, summary, status FROM approvals WHERE status = ? ORDER BY created_at DESC, rowid DESC",
+                "SELECT id, action, summary, payload, status FROM approvals WHERE status = ? ORDER BY created_at DESC, rowid DESC",
                 (status,),
             ).fetchall()
-        return [Approval(*row) for row in rows]
+        return [Approval(row[0], row[1], row[2], json.loads(row[3]), row[4]) for row in rows]
 
     def decide(self, approval_id: str, approve: bool) -> Approval | None:
         status = "approved" if approve else "rejected"
@@ -56,6 +61,6 @@ class ApprovalStore:
             if cursor.rowcount != 1:
                 return None
             row = self.connection.execute(
-                "SELECT id, action, summary, status FROM approvals WHERE id = ?", (approval_id,)
+                "SELECT id, action, summary, payload, status FROM approvals WHERE id = ?", (approval_id,)
             ).fetchone()
-        return Approval(*row)
+        return Approval(row[0], row[1], row[2], json.loads(row[3]), row[4])
