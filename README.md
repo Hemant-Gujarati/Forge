@@ -13,6 +13,8 @@ Forge is a local-first coding assistant for Windows and Linux. It has a terminal
 
 Milestone 6 adds remote task visibility. In Telegram, `/tasks` lists recent jobs and `/status <task-id>` checks a specific one.
 
+The native Kotlin/Compose Android module now includes its first pairing screen in [`android/`](android/).
+
 ## Development
 
 ```powershell
