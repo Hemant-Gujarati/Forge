@@ -11,7 +11,7 @@ Forge is a local-first coding assistant for Windows and Linux. It has a terminal
 
 ## Status
 
-Milestone 3 adds safe file primitives: read, write, edit, and directory listing. Every path is constrained to configured workspace roots.
+Milestone 4 adds an opt-in shell tool. Shell execution is disabled by default, is restricted to approved workspace directories, has a bounded timeout, and captures limited output.
 
 ## Development
 
