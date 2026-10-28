@@ -11,7 +11,7 @@ Forge is a local-first coding assistant for Windows and Linux. It has a terminal
 
 ## Status
 
-Milestone 2 adds a Telegram long-polling transport. It only accepts messages from configured chat IDs and does not require a webhook, tunnel, or public inbound port.
+Milestone 3 adds safe file primitives: read, write, edit, and directory listing. Every path is constrained to configured workspace roots.
 
 ## Development
 
