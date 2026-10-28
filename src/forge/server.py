@@ -7,13 +7,18 @@ import json
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from forge.tasks import TaskQueue
+from collections.abc import Callable
+
+from forge.tasks import Task, TaskQueue
 
 
 class ForgeApiServer:
-    def __init__(self, tasks: TaskQueue, access_token: str) -> None:
+    def __init__(
+        self, tasks: TaskQueue, access_token: str, submit_task: Callable[[str], Task] | None = None
+    ) -> None:
         self.tasks = tasks
         self.access_token = access_token
+        self.submit_task = submit_task
 
     def create_server(self, host: str, port: int) -> ThreadingHTTPServer:
         api = self
@@ -28,6 +33,26 @@ class ForgeApiServer:
                     tasks = [{"id": task.id, "status": task.status} for task in api.tasks.recent()]
                     return self.respond(HTTPStatus.OK, {"tasks": tasks})
                 self.respond(HTTPStatus.NOT_FOUND, {"error": "not_found"})
+
+            def do_POST(self) -> None:  # noqa: N802
+                if self.path != "/v1/tasks":
+                    return self.respond(HTTPStatus.NOT_FOUND, {"error": "not_found"})
+                if not api.is_authorized(self.headers.get("Authorization", "")):
+                    return self.respond(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
+                if api.submit_task is None:
+                    return self.respond(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "tasks_unavailable"})
+                try:
+                    length = int(self.headers.get("Content-Length", "0"))
+                    if length > 20_000:
+                        raise ValueError("Request body is too large")
+                    payload = json.loads(self.rfile.read(length))
+                    prompt = payload.get("prompt", "")
+                    if not isinstance(prompt, str) or not prompt.strip():
+                        raise ValueError("A non-empty prompt is required")
+                    task = api.submit_task(prompt.strip())
+                except (ValueError, json.JSONDecodeError) as error:
+                    return self.respond(HTTPStatus.BAD_REQUEST, {"error": str(error)})
+                self.respond(HTTPStatus.ACCEPTED, {"id": task.id, "status": task.status})
 
             def respond(self, status: HTTPStatus, body: dict[str, object]) -> None:
                 encoded = json.dumps(body).encode("utf-8")

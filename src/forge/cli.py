@@ -5,13 +5,11 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from forge.agent import ForgeAgent
 from forge import __version__
 from forge.config import load_config
-from forge.providers import OllamaProvider
-from forge.sessions import SessionStore
+from forge.runtime import ForgeRuntime
 from forge.server import ForgeApiServer
-from forge.tasks import Task, TaskQueue
+from forge.tasks import Task
 from forge.telegram import TelegramBot, TelegramMessage
 
 
@@ -50,15 +48,7 @@ def main(argv: list[str] | None = None) -> int:
         if not config.telegram.allowed_chat_ids:
             parser.error("Telegram needs at least one allowed_chat_ids entry.")
 
-        ollama = config.providers.get("ollama", {})
-        provider = OllamaProvider(
-            base_url=ollama.get("base_url", "http://localhost:11434"),
-            model=ollama.get("default_model", "llama3.2"),
-        )
-        forge_dir = Path.cwd() / ".forge"
-        forge_dir.mkdir(exist_ok=True)
-        agent = ForgeAgent(provider, SessionStore(forge_dir / "sessions.db"))
-        queue = TaskQueue()
+        runtime = ForgeRuntime(config, Path.cwd())
         bot = TelegramBot(config.telegram)
 
         def complete(chat_id: int, task: Task) -> None:
@@ -71,7 +61,7 @@ def main(argv: list[str] | None = None) -> int:
             if message.text == "/start":
                 return "Forge is connected. Send a coding question to begin."
             if message.text == "/tasks":
-                tasks = queue.recent()
+                tasks = runtime.tasks.recent()
                 if not tasks:
                     return "No tasks have run in this Forge session."
                 return "\n".join(f"{task.id}: {task.status}" for task in tasks)
@@ -79,15 +69,14 @@ def main(argv: list[str] | None = None) -> int:
                 _, *parts = message.text.split(maxsplit=1)
                 if not parts:
                     return "Forge is online. Use /tasks or /status <task-id>."
-                task = queue.get(parts[0])
+                task = runtime.tasks.get(parts[0])
                 if task is None:
                     return f"No task found with ID {parts[0]}."
                 if task.status == "failed":
                     return f"Task {task.id}: failed — {task.error}"
                 return f"Task {task.id}: {task.status}"
-            task = queue.submit(
-                lambda: agent.respond(str(message.chat_id), message.text),
-                lambda completed: complete(message.chat_id, completed),
+            task = runtime.submit(
+                str(message.chat_id), message.text, lambda completed: complete(message.chat_id, completed)
             )
             return f"Task {task.id} queued. I will send the result here."
 
@@ -95,10 +84,15 @@ def main(argv: list[str] | None = None) -> int:
         bot.run(handler)
         return 0
     if args.command == "serve":
-        if config.server.host not in {"127.0.0.1", "localhost", "::1"} and not config.server.access_token:
-            parser.error("A server.access_token is required when listening beyond localhost.")
+        if not config.server.access_token:
+            parser.error("A server.access_token is required for the native-app API.")
+        runtime = ForgeRuntime(config, Path.cwd())
         print(f"Forge API listening on http://{config.server.host}:{config.server.port}")
-        ForgeApiServer(TaskQueue(), config.server.access_token).serve(config.server.host, config.server.port)
+        ForgeApiServer(
+            runtime.tasks,
+            config.server.access_token,
+            lambda prompt: runtime.submit("android", prompt),
+        ).serve(config.server.host, config.server.port)
         return 0
     return 1
 
