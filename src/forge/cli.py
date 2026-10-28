@@ -65,6 +65,18 @@ def main(argv: list[str] | None = None) -> int:
                 if not tasks:
                     return "No tasks have run in this Forge session."
                 return "\n".join(f"{task.id}: {task.status}" for task in tasks)
+            if message.text == "/approvals":
+                approvals = runtime.approvals.list()
+                if not approvals:
+                    return "No actions are waiting for approval."
+                return "\n".join(f"{item.id}: {item.action} — {item.summary}" for item in approvals)
+            if message.text.startswith("/approve ") or message.text.startswith("/reject "):
+                approve = message.text.startswith("/approve ")
+                approval_id = message.text.split(maxsplit=1)[1]
+                result = runtime.approvals.decide(approval_id, approve)
+                if result is None:
+                    return "No pending approval found with that ID."
+                return f"{result.action} {result.status}."
             if message.text.startswith("/status"):
                 _, *parts = message.text.split(maxsplit=1)
                 if not parts:
@@ -92,6 +104,7 @@ def main(argv: list[str] | None = None) -> int:
             runtime.tasks,
             config.server.access_token,
             lambda prompt: runtime.submit("android", prompt),
+            runtime.approvals,
         ).serve(config.server.host, config.server.port)
         return 0
     return 1

@@ -15,6 +15,8 @@ Milestone 6 adds remote task visibility. In Telegram, `/tasks` lists recent jobs
 
 The native Kotlin/Compose Android module now includes its first pairing screen in [`android/`](android/). The desktop `forge serve` command exposes initial Android API endpoints, including remote task submission. Do not expose it publicly; use a private network and a non-empty `server.access_token`.
 
+Potentially destructive actions will use Forge's approval store. Telegram supports `/approvals`, `/approve <id>`, and `/reject <id>`; the Android API exposes the same pending approvals.
+
 ## Development
 
 ```powershell

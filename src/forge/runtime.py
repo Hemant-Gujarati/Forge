@@ -6,6 +6,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from forge.agent import ForgeAgent
+from forge.approvals import ApprovalStore
 from forge.config import ForgeConfig
 from forge.providers import OllamaProvider
 from forge.sessions import SessionStore
@@ -25,6 +26,7 @@ class ForgeRuntime:
         )
         state_directory = working_directory / ".forge"
         state_directory.mkdir(exist_ok=True)
+        self.approvals = ApprovalStore(state_directory / "forge.db")
         guard = WorkspaceGuard(config.workspace_roots, working_directory)
         tools = ToolRegistry(FileTools(guard), GitTools(guard))
         self.agent = ForgeAgent(provider, SessionStore(state_directory / "sessions.db"), tools)
