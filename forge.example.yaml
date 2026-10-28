@@ -1,0 +1,18 @@
+default_provider: ollama
+workspace_roots:
+  - .
+
+providers:
+  ollama:
+    base_url: http://localhost:11434
+    default_model: llama3.2
+
+telegram:
+  enabled: false
+  bot_token: ""
+  allowed_chat_ids: []
+
+safety:
+  mode: ask
+  allow_shell: false
+
