@@ -17,6 +17,8 @@ The native Kotlin/Compose Android module now includes its first pairing screen i
 
 Potentially destructive actions will use Forge's approval store. Telegram supports `/approvals`, `/approve <id>`, and `/reject <id>`; the Android API exposes the same pending approvals.
 
+To make shell commands available to the agent, explicitly set `safety.allow_shell: true`; each individual command still requires approval.
+
 ## Development
 
 ```powershell

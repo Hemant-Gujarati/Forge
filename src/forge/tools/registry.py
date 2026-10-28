@@ -7,17 +7,21 @@ from typing import Any
 
 from forge.tools.files import FileTools
 from forge.tools.git import GitTools
+from forge.tools.shell import ShellTools
 from forge.approvals import ApprovalStore
 
 
 class ToolRegistry:
-    def __init__(self, files: FileTools, git: GitTools, approvals: ApprovalStore) -> None:
+    def __init__(
+        self, files: FileTools, git: GitTools, approvals: ApprovalStore, shell: ShellTools | None = None
+    ) -> None:
         self.files = files
         self.git = git
         self.approvals = approvals
+        self.shell = shell
 
     def definitions(self) -> list[dict[str, Any]]:
-        return [
+        tools = [
             self._definition("read_file", {"path": {"type": "string"}}, ["path"]),
             self._definition("write_file", {"path": {"type": "string"}, "content": {"type": "string"}}, ["path", "content"]),
             self._definition("edit_file", {"path": {"type": "string"}, "old_text": {"type": "string"}, "new_text": {"type": "string"}}, ["path", "old_text", "new_text"]),
@@ -26,6 +30,9 @@ class ToolRegistry:
             self._definition("git_diff", {"staged": {"type": "boolean"}}, []),
             self._definition("git_log", {"count": {"type": "integer"}}, []),
         ]
+        if self.shell is not None and self.shell.enabled:
+            tools.append(self._definition("run_command", {"command": {"type": "string"}, "path": {"type": "string"}, "timeout": {"type": "integer"}}, ["command"]))
+        return tools
 
     def execute(self, name: str, arguments: dict[str, Any]) -> str:
         try:
@@ -33,6 +40,13 @@ class ToolRegistry:
                 result: Any = self.files.read_file(str(arguments["path"]))
             elif name in {"write_file", "edit_file"}:
                 return self._request_file_approval(name, arguments)
+            elif name == "run_command" and self.shell is not None and self.shell.enabled:
+                approval = self.approvals.request(
+                    "run_command",
+                    f"run_command: {arguments.get('command', '')}",
+                    dict(arguments),
+                )
+                return json.dumps({"ok": False, "approval_id": approval.id, "error": "Approval required before running this command."})
             elif name == "list_directory":
                 result = self.files.list_directory(str(arguments.get("path", ".")))
             elif name == "git_status":

@@ -15,6 +15,7 @@ from forge.safety import WorkspaceGuard
 from forge.tools.files import FileTools
 from forge.tools.git import GitTools
 from forge.tools.registry import ToolRegistry
+from forge.tools.shell import ShellTools
 
 
 class ForgeRuntime:
@@ -29,7 +30,8 @@ class ForgeRuntime:
         self.approvals = ApprovalStore(state_directory / "forge.db")
         guard = WorkspaceGuard(config.workspace_roots, working_directory)
         self.files = FileTools(guard)
-        tools = ToolRegistry(self.files, GitTools(guard), self.approvals)
+        self.shell = ShellTools(guard, config.safety.allow_shell)
+        tools = ToolRegistry(self.files, GitTools(guard), self.approvals, self.shell)
         self.agent = ForgeAgent(provider, SessionStore(state_directory / "sessions.db"), tools)
         self.tasks = TaskQueue()
 
@@ -54,6 +56,13 @@ class ForgeRuntime:
                     str(approval.payload["old_text"]),
                     str(approval.payload["new_text"]),
                 )
+            elif approval.action == "run_command":
+                command = self.shell.run_command(
+                    str(approval.payload["command"]),
+                    str(approval.payload.get("path", ".")),
+                    int(approval.payload.get("timeout", 60)),
+                )
+                result = f"Exit {command.exit_code}\n{command.stdout}{command.stderr}"
             else:
                 return approval, f"{approval.action} approved. No executor is available yet."
             return approval, result
