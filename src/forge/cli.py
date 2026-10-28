@@ -68,8 +68,21 @@ def main(argv: list[str] | None = None) -> int:
         def handler(message: TelegramMessage) -> str:
             if message.text == "/start":
                 return "Forge is connected. Send a coding question to begin."
-            if message.text == "/status":
-                return "Forge transport is online. New tasks run in the background."
+            if message.text == "/tasks":
+                tasks = queue.recent()
+                if not tasks:
+                    return "No tasks have run in this Forge session."
+                return "\n".join(f"{task.id}: {task.status}" for task in tasks)
+            if message.text.startswith("/status"):
+                _, *parts = message.text.split(maxsplit=1)
+                if not parts:
+                    return "Forge is online. Use /tasks or /status <task-id>."
+                task = queue.get(parts[0])
+                if task is None:
+                    return f"No task found with ID {parts[0]}."
+                if task.status == "failed":
+                    return f"Task {task.id}: failed — {task.error}"
+                return f"Task {task.id}: {task.status}"
             task = queue.submit(
                 lambda: agent.respond(str(message.chat_id), message.text),
                 lambda completed: complete(message.chat_id, completed),

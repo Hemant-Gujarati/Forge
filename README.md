@@ -11,7 +11,7 @@ Forge is a local-first coding assistant for Windows and Linux. It has a terminal
 
 ## Status
 
-Milestone 5 adds read-only Git tools for safe remote inspection: status, diff, and recent history. Forge will require an explicit approval flow before it can create commits.
+Milestone 6 adds remote task visibility. In Telegram, `/tasks` lists recent jobs and `/status <task-id>` checks a specific one.
 
 ## Development
 

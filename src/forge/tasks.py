@@ -31,15 +31,27 @@ class TaskQueue:
             self._tasks[task.id] = task
 
         def run() -> None:
-            task.status = "running"
+            with self._lock:
+                task.status = "running"
             try:
-                task.result = operation()
-                task.status = "completed"
+                result = operation()
+                with self._lock:
+                    task.result = result
+                    task.status = "completed"
             except Exception as error:  # Remote errors must be returned, not crash polling.
-                task.error = str(error)
-                task.status = "failed"
+                with self._lock:
+                    task.error = str(error)
+                    task.status = "failed"
             on_complete(task)
 
         self._executor.submit(run)
         return task
+
+    def get(self, task_id: str) -> Task | None:
+        with self._lock:
+            return self._tasks.get(task_id)
+
+    def recent(self, limit: int = 10) -> list[Task]:
+        with self._lock:
+            return list(self._tasks.values())[-max(1, limit) :]
 
