@@ -40,6 +40,7 @@ fun ForgeApp() {
     var accessToken by remember { mutableStateOf("") }
     var prompt by remember { mutableStateOf("") }
     var latestTaskId by remember { mutableStateOf("") }
+    var approvals by remember { mutableStateOf(emptyList<ForgeApiClient.ApprovalItem>()) }
     var status by remember { mutableStateOf("Not connected") }
     val api = remember { ForgeApiClient() }
     val mainThread = remember { Handler(Looper.getMainLooper()) }
@@ -123,6 +124,62 @@ fun ForgeApp() {
                         },
                         modifier = Modifier.fillMaxWidth(),
                     ) { Text("Refresh task status") }
+                }
+                Button(
+                    onClick = {
+                        status = "Loading approvals…"
+                        Thread {
+                            val result = api.pendingApprovals(desktopAddress, accessToken)
+                            mainThread.post {
+                                result.fold(
+                                    onSuccess = {
+                                        approvals = it
+                                        status = if (it.isEmpty()) "No pending approvals." else "${it.size} approval(s) pending."
+                                    },
+                                    onFailure = { status = "Approval refresh failed: ${it.message}" },
+                                )
+                            }
+                        }.start()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = desktopAddress.isNotBlank() && accessToken.isNotBlank(),
+                ) { Text("Refresh approvals") }
+                approvals.forEach { approval ->
+                    Text("${approval.action}: ${approval.summary}")
+                    Button(
+                        onClick = {
+                            Thread {
+                                val result = api.resolveApproval(desktopAddress, accessToken, approval.id, true)
+                                mainThread.post {
+                                    status = result.fold(
+                                        onSuccess = {
+                                            approvals = approvals.filterNot { item -> item.id == approval.id }
+                                            it
+                                        },
+                                        onFailure = { "Approval failed: ${it.message}" },
+                                    )
+                                }
+                            }.start()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Approve ${approval.id}") }
+                    Button(
+                        onClick = {
+                            Thread {
+                                val result = api.resolveApproval(desktopAddress, accessToken, approval.id, false)
+                                mainThread.post {
+                                    status = result.fold(
+                                        onSuccess = {
+                                            approvals = approvals.filterNot { item -> item.id == approval.id }
+                                            it
+                                        },
+                                        onFailure = { "Rejection failed: ${it.message}" },
+                                    )
+                                }
+                            }.start()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Reject ${approval.id}") }
                 }
                 Text(status, style = MaterialTheme.typography.bodyMedium)
             }

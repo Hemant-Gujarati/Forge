@@ -5,6 +5,8 @@ import java.net.URL
 import javax.net.ssl.HttpsURLConnection
 
 class ForgeApiClient {
+    data class ApprovalItem(val id: String, val action: String, val summary: String)
+
     fun health(endpoint: String): Result<String> = request(endpoint, "/health", null, null) { response ->
         JSONObject(response).getString("status")
     }
@@ -19,13 +21,29 @@ class ForgeApiClient {
             JSONObject(response).getString("status")
         }
 
-    private fun request(
+    fun pendingApprovals(endpoint: String, token: String): Result<List<ApprovalItem>> =
+        request(endpoint, "/v1/approvals", token, null) { response ->
+            val approvals = JSONObject(response).getJSONArray("approvals")
+            List(approvals.length()) { index ->
+                val item = approvals.getJSONObject(index)
+                ApprovalItem(item.getString("id"), item.getString("action"), item.getString("summary"))
+            }
+        }
+
+    fun resolveApproval(endpoint: String, token: String, approvalId: String, approve: Boolean): Result<String> {
+        val decision = if (approve) "approve" else "reject"
+        return request(endpoint, "/v1/approvals/$approvalId/$decision", token, "{}") { response ->
+            JSONObject(response).getString("message")
+        }
+    }
+
+    private fun <T> request(
         endpoint: String,
         path: String,
         token: String?,
         body: String?,
-        parse: (String) -> String,
-    ): Result<String> = runCatching {
+        parse: (String) -> T,
+    ): Result<T> = runCatching {
         require(endpoint.startsWith("https://")) { "Forge desktop address must use HTTPS." }
         val connection = URL(endpoint.trimEnd('/') + path).openConnection() as HttpsURLConnection
         connection.requestMethod = if (body == null) "GET" else "POST"
