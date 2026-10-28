@@ -41,3 +41,9 @@ class GitTools:
 
     def log(self, path: str = ".", count: int = 10) -> str:
         return self._run(["log", f"--max-count={min(max(count, 1), 50)}", "--oneline"], path)
+
+    def commit(self, message: str, path: str = ".") -> str:
+        if not message.strip():
+            raise ValueError("Commit message cannot be empty")
+        self._run(["add", "-A"], path)
+        return self._run(["commit", "-m", message.strip()], path)

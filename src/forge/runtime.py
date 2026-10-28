@@ -30,8 +30,9 @@ class ForgeRuntime:
         self.approvals = ApprovalStore(state_directory / "forge.db")
         guard = WorkspaceGuard(config.workspace_roots, working_directory)
         self.files = FileTools(guard)
+        self.git = GitTools(guard)
         self.shell = ShellTools(guard, config.safety.allow_shell)
-        tools = ToolRegistry(self.files, GitTools(guard), self.approvals, self.shell)
+        tools = ToolRegistry(self.files, self.git, self.approvals, self.shell)
         self.agent = ForgeAgent(provider, SessionStore(state_directory / "sessions.db"), tools)
         self.tasks = TaskQueue()
 
@@ -63,6 +64,8 @@ class ForgeRuntime:
                     int(approval.payload.get("timeout", 60)),
                 )
                 result = f"Exit {command.exit_code}\n{command.stdout}{command.stderr}"
+            elif approval.action == "git_commit":
+                result = self.git.commit(str(approval.payload["message"]))
             else:
                 return approval, f"{approval.action} approved. No executor is available yet."
             return approval, result

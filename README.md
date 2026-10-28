@@ -19,6 +19,8 @@ Potentially destructive actions will use Forge's approval store. Telegram suppor
 
 To make shell commands available to the agent, explicitly set `safety.allow_shell: true`; each individual command still requires approval.
 
+Git commits are also staged as approval requests. When approved, Forge stages all current workspace changes and creates the exact requested commit.
+
 ## Development
 
 ```powershell

@@ -29,6 +29,7 @@ class ToolRegistry:
             self._definition("git_status", {}, []),
             self._definition("git_diff", {"staged": {"type": "boolean"}}, []),
             self._definition("git_log", {"count": {"type": "integer"}}, []),
+            self._definition("git_commit", {"message": {"type": "string"}}, ["message"]),
         ]
         if self.shell is not None and self.shell.enabled:
             tools.append(self._definition("run_command", {"command": {"type": "string"}, "path": {"type": "string"}, "timeout": {"type": "integer"}}, ["command"]))
@@ -47,6 +48,12 @@ class ToolRegistry:
                     dict(arguments),
                 )
                 return json.dumps({"ok": False, "approval_id": approval.id, "error": "Approval required before running this command."})
+            elif name == "git_commit":
+                message = str(arguments.get("message", ""))
+                if not message.strip():
+                    raise ValueError("A commit message is required")
+                approval = self.approvals.request("git_commit", f"git_commit: {message}", {"message": message})
+                return json.dumps({"ok": False, "approval_id": approval.id, "error": "Approval required before creating a Git commit."})
             elif name == "list_directory":
                 result = self.files.list_directory(str(arguments.get("path", ".")))
             elif name == "git_status":
