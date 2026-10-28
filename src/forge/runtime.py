@@ -10,6 +10,10 @@ from forge.config import ForgeConfig
 from forge.providers import OllamaProvider
 from forge.sessions import SessionStore
 from forge.tasks import Task, TaskQueue
+from forge.safety import WorkspaceGuard
+from forge.tools.files import FileTools
+from forge.tools.git import GitTools
+from forge.tools.registry import ToolRegistry
 
 
 class ForgeRuntime:
@@ -21,7 +25,9 @@ class ForgeRuntime:
         )
         state_directory = working_directory / ".forge"
         state_directory.mkdir(exist_ok=True)
-        self.agent = ForgeAgent(provider, SessionStore(state_directory / "sessions.db"))
+        guard = WorkspaceGuard(config.workspace_roots, working_directory)
+        tools = ToolRegistry(FileTools(guard), GitTools(guard))
+        self.agent = ForgeAgent(provider, SessionStore(state_directory / "sessions.db"), tools)
         self.tasks = TaskQueue()
 
     def submit(self, session_id: str, prompt: str, on_complete: Callable[[Task], None] | None = None) -> Task:
