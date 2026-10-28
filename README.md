@@ -22,13 +22,15 @@ Potentially destructive actions will use Forge's approval store. Telegram suppor
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -e .
+pip install -e ".[dev]"
 forge doctor
 forge config show
 forge telegram
 ```
 
 Copy `forge.example.yaml` to `forge.yaml` to configure Forge locally. Never commit bot tokens or API keys.
+
+GitHub Actions runs Ruff and pytest on every push and pull request.
 
 To enable Telegram, set `telegram.enabled` to `true`, add the token from BotFather, and add your numeric Telegram chat ID to `allowed_chat_ids`.
 
