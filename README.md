@@ -11,7 +11,7 @@ Forge is a local-first coding assistant for Windows and Linux. It has a terminal
 
 ## Status
 
-Milestone 1 establishes the Python package, configuration, workspace guard, local session store, and command-line interface. The agent loop and Telegram polling follow next.
+Milestone 2 adds a Telegram long-polling transport. It only accepts messages from configured chat IDs and does not require a webhook, tunnel, or public inbound port.
 
 ## Development
 
@@ -21,7 +21,10 @@ python -m venv .venv
 pip install -e .
 forge doctor
 forge config show
+forge telegram
 ```
 
 Copy `forge.example.yaml` to `forge.yaml` to configure Forge locally. Never commit bot tokens or API keys.
+
+To enable Telegram, set `telegram.enabled` to `true`, add the token from BotFather, and add your numeric Telegram chat ID to `allowed_chat_ids`.
 

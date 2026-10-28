@@ -20,6 +20,7 @@ class TelegramConfig:
     enabled: bool = False
     bot_token: str = ""
     allowed_chat_ids: list[int] = field(default_factory=list)
+    poll_timeout_seconds: int = 30
 
 
 @dataclass
