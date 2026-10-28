@@ -41,6 +41,14 @@ class ForgeApiServer:
                         return self.respond(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
                     tasks = [{"id": task.id, "status": task.status} for task in api.tasks.recent()]
                     return self.respond(HTTPStatus.OK, {"tasks": tasks})
+                if self.path.startswith("/v1/tasks/"):
+                    if not api.is_authorized(self.headers.get("Authorization", "")):
+                        return self.respond(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
+                    task_id = self.path.removeprefix("/v1/tasks/")
+                    task = api.tasks.get(task_id)
+                    if task is None:
+                        return self.respond(HTTPStatus.NOT_FOUND, {"error": "task_not_found"})
+                    return self.respond(HTTPStatus.OK, task.__dict__)
                 if self.path == "/v1/approvals":
                     if not api.is_authorized(self.headers.get("Authorization", "")):
                         return self.respond(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})

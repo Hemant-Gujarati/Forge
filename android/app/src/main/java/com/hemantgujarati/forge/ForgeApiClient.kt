@@ -14,6 +14,11 @@ class ForgeApiClient {
             JSONObject(response).getString("id")
         }
 
+    fun taskStatus(endpoint: String, token: String, taskId: String): Result<String> =
+        request(endpoint, "/v1/tasks/$taskId", token, null) { response ->
+            JSONObject(response).getString("status")
+        }
+
     private fun request(
         endpoint: String,
         path: String,

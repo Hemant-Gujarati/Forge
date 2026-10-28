@@ -39,6 +39,7 @@ fun ForgeApp() {
     var desktopAddress by remember { mutableStateOf("") }
     var accessToken by remember { mutableStateOf("") }
     var prompt by remember { mutableStateOf("") }
+    var latestTaskId by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("Not connected") }
     val api = remember { ForgeApiClient() }
     val mainThread = remember { Handler(Looper.getMainLooper()) }
@@ -94,7 +95,10 @@ fun ForgeApp() {
                             val result = api.submitTask(desktopAddress, accessToken, prompt)
                             mainThread.post {
                                 status = result.fold(
-                                    onSuccess = { "Task $it queued." },
+                                    onSuccess = {
+                                        latestTaskId = it
+                                        "Task $it queued."
+                                    },
                                     onFailure = { "Task failed: ${it.message}" },
                                 )
                             }
@@ -103,6 +107,23 @@ fun ForgeApp() {
                     modifier = Modifier.fillMaxWidth(),
                     enabled = desktopAddress.isNotBlank() && accessToken.isNotBlank() && prompt.isNotBlank(),
                 ) { Text("Run task") }
+                if (latestTaskId.isNotBlank()) {
+                    Button(
+                        onClick = {
+                            status = "Checking task…"
+                            Thread {
+                                val result = api.taskStatus(desktopAddress, accessToken, latestTaskId)
+                                mainThread.post {
+                                    status = result.fold(
+                                        onSuccess = { "Task $latestTaskId: $it" },
+                                        onFailure = { "Status failed: ${it.message}" },
+                                    )
+                                }
+                            }.start()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Refresh task status") }
+                }
                 Text(status, style = MaterialTheme.typography.bodyMedium)
             }
         }
