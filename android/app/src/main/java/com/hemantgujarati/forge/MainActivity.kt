@@ -124,6 +124,21 @@ fun ForgeApp() {
                         },
                         modifier = Modifier.fillMaxWidth(),
                     ) { Text("Refresh task status") }
+                    Button(
+                        onClick = {
+                            status = "Cancelling task…"
+                            Thread {
+                                val result = api.cancelTask(desktopAddress, accessToken, latestTaskId)
+                                mainThread.post {
+                                    status = result.fold(
+                                        onSuccess = { "Task $latestTaskId: $it" },
+                                        onFailure = { "Cancellation failed: ${it.message}" },
+                                    )
+                                }
+                            }.start()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Cancel task") }
                 }
                 Button(
                     onClick = {

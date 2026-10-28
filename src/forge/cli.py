@@ -85,6 +85,10 @@ def main(argv: list[str] | None = None) -> int:
                 if task.status == "failed":
                     return f"Task {task.id}: failed — {task.error}"
                 return f"Task {task.id}: {task.status}"
+            if message.text.startswith("/cancel "):
+                task_id = message.text.split(maxsplit=1)[1]
+                task = runtime.tasks.cancel(task_id)
+                return f"Task {task_id} cancelled." if task else f"Task {task_id} cannot be cancelled."
             task = runtime.submit(
                 str(message.chat_id), message.text, lambda completed: complete(message.chat_id, completed)
             )

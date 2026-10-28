@@ -20,6 +20,7 @@ class Task:
 class TaskQueue:
     workers: int = 1
     _tasks: dict[str, Task] = field(default_factory=dict)
+    _futures: dict[str, object] = field(default_factory=dict)
     _lock: Lock = field(default_factory=Lock)
 
     def __post_init__(self) -> None:
@@ -44,7 +45,9 @@ class TaskQueue:
                     task.status = "failed"
             on_complete(task)
 
-        self._executor.submit(run)
+        future = self._executor.submit(run)
+        with self._lock:
+            self._futures[task.id] = future
         return task
 
     def get(self, task_id: str) -> Task | None:
@@ -54,4 +57,13 @@ class TaskQueue:
     def recent(self, limit: int = 10) -> list[Task]:
         with self._lock:
             return list(self._tasks.values())[-max(1, limit) :]
+
+    def cancel(self, task_id: str) -> Task | None:
+        with self._lock:
+            task = self._tasks.get(task_id)
+            future = self._futures.get(task_id)
+            if task is None or future is None or task.status != "queued" or not future.cancel():
+                return None
+            task.status = "cancelled"
+            return task
 

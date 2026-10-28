@@ -57,6 +57,14 @@ class ForgeApiServer:
                 self.respond(HTTPStatus.NOT_FOUND, {"error": "not_found"})
 
             def do_POST(self) -> None:  # noqa: N802
+                if self.path.startswith("/v1/tasks/") and self.path.endswith("/cancel"):
+                    if not api.is_authorized(self.headers.get("Authorization", "")):
+                        return self.respond(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
+                    task_id = self.path.removeprefix("/v1/tasks/").removesuffix("/cancel")
+                    task = api.tasks.cancel(task_id)
+                    if task is None:
+                        return self.respond(HTTPStatus.CONFLICT, {"error": "task_cannot_be_cancelled"})
+                    return self.respond(HTTPStatus.OK, task.__dict__)
                 if self.path.startswith("/v1/approvals/"):
                     if not api.is_authorized(self.headers.get("Authorization", "")):
                         return self.respond(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})

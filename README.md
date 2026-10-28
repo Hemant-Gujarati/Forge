@@ -17,6 +17,8 @@ The native Kotlin/Compose Android module now includes its first pairing screen i
 
 Potentially destructive actions will use Forge's approval store. Telegram supports `/approvals`, `/approve <id>`, and `/reject <id>`; the Android API exposes the same pending approvals.
 
+Queued remote tasks can be cancelled with Telegram's `/cancel <task-id>` or the Android task screen. Tasks already running cannot be forcibly interrupted yet.
+
 To make shell commands available to the agent, explicitly set `safety.allow_shell: true`; each individual command still requires approval.
 
 Git commits are also staged as approval requests. When approved, Forge stages all current workspace changes and creates the exact requested commit.

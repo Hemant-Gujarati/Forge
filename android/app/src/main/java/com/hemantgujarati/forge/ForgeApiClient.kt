@@ -21,6 +21,11 @@ class ForgeApiClient {
             JSONObject(response).getString("status")
         }
 
+    fun cancelTask(endpoint: String, token: String, taskId: String): Result<String> =
+        request(endpoint, "/v1/tasks/$taskId/cancel", token, "{}") { response ->
+            JSONObject(response).getString("status")
+        }
+
     fun pendingApprovals(endpoint: String, token: String): Result<List<ApprovalItem>> =
         request(endpoint, "/v1/approvals", token, null) { response ->
             val approvals = JSONObject(response).getJSONArray("approvals")
