@@ -28,6 +28,8 @@ class ServerConfig:
     host: str = "127.0.0.1"
     port: int = 7777
     access_token: str = ""
+    tls_cert_path: str = ""
+    tls_key_path: str = ""
 
 
 @dataclass

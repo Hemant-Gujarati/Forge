@@ -96,15 +96,26 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "serve":
         if not config.server.access_token:
             parser.error("A server.access_token is required for the native-app API.")
+        tls_paths = [config.server.tls_cert_path, config.server.tls_key_path]
+        if any(tls_paths) and not all(tls_paths):
+            parser.error("Set both server.tls_cert_path and server.tls_key_path, or neither.")
+        if config.server.host not in {"127.0.0.1", "localhost", "::1"} and not all(tls_paths):
+            parser.error("TLS certificate and key paths are required when listening beyond localhost.")
         runtime = ForgeRuntime(config, Path.cwd())
-        print(f"Forge API listening on http://{config.server.host}:{config.server.port}")
+        protocol = "https" if all(tls_paths) else "http"
+        print(f"Forge API listening on {protocol}://{config.server.host}:{config.server.port}")
         ForgeApiServer(
             runtime.tasks,
             config.server.access_token,
             lambda prompt: runtime.submit("android", prompt),
             runtime.approvals,
             runtime.resolve_approval,
-        ).serve(config.server.host, config.server.port)
+        ).serve(
+            config.server.host,
+            config.server.port,
+            config.server.tls_cert_path,
+            config.server.tls_key_path,
+        )
         return 0
     return 1
 

@@ -16,6 +16,8 @@ server:
   host: 127.0.0.1
   port: 7777
   access_token: ""
+  tls_cert_path: ""
+  tls_key_path: ""
 
 safety:
   mode: ask

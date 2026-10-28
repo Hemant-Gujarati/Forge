@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hmac
 import json
+import ssl
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -100,5 +101,10 @@ class ForgeApiServer:
         expected = f"Bearer {self.access_token}"
         return bool(self.access_token) and hmac.compare_digest(header, expected)
 
-    def serve(self, host: str, port: int) -> None:
-        self.create_server(host, port).serve_forever()
+    def serve(self, host: str, port: int, tls_cert_path: str = "", tls_key_path: str = "") -> None:
+        server = self.create_server(host, port)
+        if tls_cert_path and tls_key_path:
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            context.load_cert_chain(tls_cert_path, tls_key_path)
+            server.socket = context.wrap_socket(server.socket, server_side=True)
+        server.serve_forever()
