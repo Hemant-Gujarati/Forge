@@ -182,7 +182,10 @@ def main(argv: list[str] | None = None) -> int:
             if message.text == "/start":
                 return "Forge is connected. Send a coding question to begin."
             if message.text == "/help":
-                return "Commands: /help, /tasks, /status <id>, /cancel <id>, /approvals, /approve <id>, /reject <id>, /models, /model <name>"
+                return "Commands: /help, /clear, /tasks, /status <id>, /cancel <id>, /approvals, /approve <id>, /reject <id>, /models, /model <name>"
+            if message.text == "/clear":
+                runtime.agent.sessions.clear(str(message.chat_id))
+                return "This Telegram conversation history was cleared."
             if message.text == "/models":
                 try:
                     models = runtime.agent.provider.list_models()
