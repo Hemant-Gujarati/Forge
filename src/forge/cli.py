@@ -181,6 +181,29 @@ def main(argv: list[str] | None = None) -> int:
         def handler(message: TelegramMessage) -> str:
             if message.text == "/start":
                 return "Forge is connected. Send a coding question to begin."
+            if message.text == "/help":
+                return "Commands: /help, /tasks, /status <id>, /cancel <id>, /approvals, /approve <id>, /reject <id>, /models, /model <name>"
+            if message.text == "/models":
+                try:
+                    models = runtime.agent.provider.list_models()
+                except httpx.HTTPError as error:
+                    return f"Could not reach Ollama: {error}"
+                return (
+                    "\n".join(models) if models else "No Ollama models are installed."
+                )
+            if message.text.startswith("/model"):
+                _, *parts = message.text.split(maxsplit=1)
+                if not parts:
+                    return f"Current model: {runtime.agent.provider.model}. Use /model <name> to switch."
+                model = parts[0].strip()
+                try:
+                    models = runtime.agent.provider.list_models()
+                except httpx.HTTPError as error:
+                    return f"Could not reach Ollama: {error}"
+                if model not in models:
+                    return f"Model not found: {model}. Use /models to list installed models."
+                runtime.agent.provider.model = model
+                return f"Switched to model: {model}"
             if message.text == "/tasks":
                 tasks = runtime.tasks.recent()
                 if not tasks:
