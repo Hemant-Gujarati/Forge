@@ -8,7 +8,7 @@ The app currently checks a desktop connection, submits coding tasks, lists recen
 
 ## Open
 
-Open the `android` folder in Android Studio. Use JDK 17 and install Android SDK Platform 36 when prompted. This module uses the Compose setup recommended by Android's official documentation.
+Open the `android` folder in Android Studio. The app compiles against Android SDK Platform 37 and uses JDK 17 or newer. Android Studio may use its bundled JDK. The Gradle Wrapper downloads the free Gradle 9.6 distribution as needed.
 
-Run Android UI tests from Android Studio or with `gradlew :app:connectedDebugAndroidTest` after connecting an emulator/device.
+Build the debug APK with `gradlew :app:assembleDebug`. Compile the Android UI test APK with `gradlew :app:assembleDebugAndroidTest`. Run UI tests with `gradlew :app:connectedDebugAndroidTest` after starting an emulator or connecting a device.
 

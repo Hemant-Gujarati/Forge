@@ -1,6 +1,6 @@
 # Forge
 
-Forge is a local-first coding assistant for Windows and Linux. It has a terminal interface, a Telegram remote-control adapter, and a future native Android companion app.
+Forge is a local-first coding assistant for Windows and Linux. It has a terminal interface, a Telegram remote-control adapter, and a native Android companion app.
 
 ## Principles
 

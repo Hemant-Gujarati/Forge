@@ -9,6 +9,7 @@ dist/
 forge.yaml
 *.db
 .gradle/
+.kotlin/
 .idea/
 local.properties
 *.iml
