@@ -6,6 +6,7 @@ import javax.net.ssl.HttpsURLConnection
 
 class ForgeApiClient {
     data class ApprovalItem(val id: String, val action: String, val summary: String)
+    data class TaskItem(val id: String, val status: String, val result: String?, val error: String?)
 
     fun health(endpoint: String): Result<String> = request(endpoint, "/health", null, null) { response ->
         JSONObject(response).getString("status")
@@ -19,6 +20,20 @@ class ForgeApiClient {
     fun taskStatus(endpoint: String, token: String, taskId: String): Result<String> =
         request(endpoint, "/v1/tasks/$taskId", token, null) { response ->
             JSONObject(response).getString("status")
+        }
+
+    fun tasks(endpoint: String, token: String): Result<List<TaskItem>> =
+        request(endpoint, "/v1/tasks", token, null) { response ->
+            val items = JSONObject(response).getJSONArray("tasks")
+            List(items.length()) { index ->
+                val item = items.getJSONObject(index)
+                TaskItem(
+                    item.getString("id"),
+                    item.getString("status"),
+                    item.optString("result").takeIf { it.isNotBlank() && it != "null" },
+                    item.optString("error").takeIf { it.isNotBlank() && it != "null" },
+                )
+            }
         }
 
     fun cancelTask(endpoint: String, token: String, taskId: String): Result<String> =

@@ -41,6 +41,7 @@ fun ForgeApp() {
     var prompt by remember { mutableStateOf("") }
     var latestTaskId by remember { mutableStateOf("") }
     var approvals by remember { mutableStateOf(emptyList<ForgeApiClient.ApprovalItem>()) }
+    var tasks by remember { mutableStateOf(emptyList<ForgeApiClient.TaskItem>()) }
     var status by remember { mutableStateOf("Not connected") }
     val api = remember { ForgeApiClient() }
     val mainThread = remember { Handler(Looper.getMainLooper()) }
@@ -67,6 +68,30 @@ fun ForgeApp() {
                     label = { Text("Access token") },
                     singleLine = true,
                 )
+                Button(
+                    onClick = {
+                        status = "Loading tasks…"
+                        Thread {
+                            val result = api.tasks(desktopAddress, accessToken)
+                            mainThread.post {
+                                result.fold(
+                                    onSuccess = {
+                                        tasks = it
+                                        status = "${it.size} recent task(s)."
+                                    },
+                                    onFailure = { status = "Task refresh failed: ${it.message}" },
+                                )
+                            }
+                        }.start()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = desktopAddress.isNotBlank() && accessToken.isNotBlank(),
+                ) { Text("Refresh tasks") }
+                tasks.forEach { task ->
+                    Text("Task ${task.id}: ${task.status}")
+                    task.result?.let { Text(it) }
+                    task.error?.let { Text("Error: $it") }
+                }
                 Button(
                     onClick = {
                         status = "Checking desktop…"
