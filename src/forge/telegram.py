@@ -34,9 +34,21 @@ class TelegramBot:
     def _request(self, method: str, payload: dict[str, Any] | None = None) -> Any:
         response = self.client.post(f"{self.base_url}/{method}", json=payload or {})
         response.raise_for_status()
-        data = response.json()
-        if not data.get("ok"):
-            raise RuntimeError(data.get("description", "Telegram API request failed"))
+        try:
+            data = response.json()
+        except ValueError as error:
+            raise RuntimeError("Telegram API returned invalid JSON") from error
+        if not isinstance(data, dict):
+            raise TypeError("Telegram API returned an invalid response")
+        if data.get("ok") is not True:
+            description = data.get("description")
+            raise RuntimeError(
+                description
+                if isinstance(description, str)
+                else "Telegram API request failed"
+            )
+        if "result" not in data:
+            raise RuntimeError("Telegram API response is missing its result")
         return data["result"]
 
     def get_updates(self, offset: int | None = None) -> list[dict[str, Any]]:
@@ -46,7 +58,10 @@ class TelegramBot:
         }
         if offset is not None:
             payload["offset"] = offset
-        return self._request("getUpdates", payload)
+        result = self._request("getUpdates", payload)
+        if not isinstance(result, list):
+            raise TypeError("Telegram API returned an invalid updates list")
+        return result
 
     def send_message(self, chat_id: int, text: str) -> None:
         for chunk in self._split_message(text):
@@ -75,11 +90,23 @@ class TelegramBot:
     def messages(self, updates: list[dict[str, Any]]) -> list[TelegramMessage]:
         result: list[TelegramMessage] = []
         for update in updates:
+            if not isinstance(update, dict):
+                continue
             message = update.get("message") or {}
-            chat_id = message.get("chat", {}).get("id")
+            if not isinstance(message, dict):
+                continue
+            chat = message.get("chat")
+            if not isinstance(chat, dict):
+                continue
+            chat_id = chat.get("id")
             text = message.get("text")
-            if isinstance(chat_id, int) and isinstance(text, str):
-                result.append(TelegramMessage(chat_id, message["message_id"], text))
+            message_id = message.get("message_id")
+            if (
+                isinstance(chat_id, int)
+                and isinstance(message_id, int)
+                and isinstance(text, str)
+            ):
+                result.append(TelegramMessage(chat_id, message_id, text))
         return result
 
     def run(self, handler: Callable[[TelegramMessage], str]) -> None:
@@ -89,11 +116,15 @@ class TelegramBot:
         while True:
             try:
                 updates = self.get_updates(offset)
-            except (httpx.HTTPError, RuntimeError):
+            except (httpx.HTTPError, RuntimeError, TypeError):
                 sleep(2)
                 continue
             for update in updates:
-                offset = update["update_id"] + 1
+                update_id = (
+                    update.get("update_id") if isinstance(update, dict) else None
+                )
+                if isinstance(update_id, int):
+                    offset = max(offset or 0, update_id + 1)
             for message in self.messages(updates):
                 if message.chat_id not in allowed:
                     continue
@@ -101,5 +132,5 @@ class TelegramBot:
                     reply = handler(message)
                     if reply:
                         self.send_message(message.chat_id, reply)
-                except (httpx.HTTPError, RuntimeError):
+                except (httpx.HTTPError, RuntimeError, TypeError):
                     continue
