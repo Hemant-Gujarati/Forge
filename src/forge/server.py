@@ -82,7 +82,14 @@ class ForgeApiServer:
                     approvals = (
                         []
                         if api.approvals is None
-                        else [approval.__dict__ for approval in api.approvals.list()]
+                        else [
+                            {
+                                "id": approval.id,
+                                "action": approval.action,
+                                "summary": approval.summary,
+                            }
+                            for approval in api.approvals.list()
+                        ]
                     )
                     return self.respond(HTTPStatus.OK, {"approvals": approvals})
                 self.respond(HTTPStatus.NOT_FOUND, {"error": "not_found"})

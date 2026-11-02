@@ -1,4 +1,5 @@
 import socket
+from collections.abc import Iterator
 from threading import Thread
 
 import httpx
@@ -10,12 +11,13 @@ from forge.tasks import Task, TaskQueue
 
 
 @pytest.fixture
-def api_client():
+def api_client() -> Iterator[tuple[httpx.Client, ApprovalStore]]:
+    approvals = ApprovalStore(":memory:")
     server_api = ForgeApiServer(
         TaskQueue(),
         "test-access-token",
         lambda prompt: Task(id="task-123", status="queued"),
-        ApprovalStore(":memory:"),
+        approvals,
     )
     server = server_api.create_server("127.0.0.1", 0)
     thread = Thread(target=server.serve_forever, daemon=True)
@@ -24,7 +26,7 @@ def api_client():
         with httpx.Client(
             base_url=f"http://127.0.0.1:{server.server_address[1]}", trust_env=False
         ) as client:
-            yield client
+            yield client, approvals
     finally:
         server.shutdown()
         server.server_close()
@@ -61,8 +63,11 @@ def test_task_prompt_is_trimmed() -> None:
     )
 
 
-def test_api_requires_authorization(api_client: httpx.Client) -> None:
-    response = api_client.get("/v1/tasks")
+def test_api_requires_authorization(
+    api_client: tuple[httpx.Client, ApprovalStore],
+) -> None:
+    client, _ = api_client
+    response = client.get("/v1/tasks")
 
     assert response.status_code == 401
     assert response.json() == {"error": "unauthorized"}
@@ -70,8 +75,11 @@ def test_api_requires_authorization(api_client: httpx.Client) -> None:
     assert response.headers["x-content-type-options"] == "nosniff"
 
 
-def test_api_accepts_valid_task_prompt(api_client: httpx.Client) -> None:
-    response = api_client.post(
+def test_api_accepts_valid_task_prompt(
+    api_client: tuple[httpx.Client, ApprovalStore],
+) -> None:
+    client, _ = api_client
+    response = client.post(
         "/v1/tasks",
         json={"prompt": "Explain this project"},
         headers={"Authorization": "Bearer test-access-token"},
@@ -81,11 +89,35 @@ def test_api_accepts_valid_task_prompt(api_client: httpx.Client) -> None:
     assert response.json() == {"id": "task-123", "status": "queued"}
 
 
-def test_api_rejects_oversized_task_prompt(api_client: httpx.Client) -> None:
-    response = api_client.post(
+def test_api_rejects_oversized_task_prompt(
+    api_client: tuple[httpx.Client, ApprovalStore],
+) -> None:
+    client, _ = api_client
+    response = client.post(
         "/v1/tasks",
         content=b" " * 20_001,
         headers={"Authorization": "Bearer test-access-token"},
     )
 
     assert response.status_code == 400
+
+
+def test_approval_api_hides_action_payload(
+    api_client: tuple[httpx.Client, ApprovalStore],
+) -> None:
+    client, approvals = api_client
+    approvals.request(
+        "write_file",
+        "write_file: notes.txt",
+        {"path": "notes.txt", "content": "private draft"},
+    )
+
+    response = client.get(
+        "/v1/approvals", headers={"Authorization": "Bearer test-access-token"}
+    )
+
+    assert response.status_code == 200
+    approval = response.json()["approvals"][0]
+    assert set(approval) == {"id", "action", "summary"}
+    assert approval["action"] == "write_file"
+    assert approval["summary"] == "write_file: notes.txt"
