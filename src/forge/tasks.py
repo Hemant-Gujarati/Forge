@@ -35,7 +35,7 @@ class TaskQueue:
             )
             self.connection.commit()
             for row in self.connection.execute(
-                "SELECT id, status, result, error FROM tasks"
+                "SELECT id, status, result, error FROM tasks ORDER BY rowid"
             ):
                 task = Task(*row)
                 if task.status in {"queued", "running"}:
