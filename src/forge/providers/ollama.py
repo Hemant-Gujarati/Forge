@@ -43,3 +43,16 @@ class OllamaProvider:
         ]
         return ProviderResponse(content=str(message.get("content", "")), tool_calls=calls)
 
+    def list_models(self) -> list[str]:
+        response = self.client.get(f"{self.base_url}/api/tags")
+        response.raise_for_status()
+        payload: dict[str, Any] = response.json()
+        return [str(item["name"]) for item in payload.get("models", []) if item.get("name")]
+
+    def is_available(self) -> bool:
+        try:
+            response = self.client.get(f"{self.base_url}/api/tags")
+            return response.is_success
+        except httpx.HTTPError:
+            return False
+

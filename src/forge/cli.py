@@ -4,14 +4,15 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+from prompt_toolkit import PromptSession
+from prompt_toolkit.history import FileHistory
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
-from prompt_toolkit import PromptSession
-from prompt_toolkit.history import FileHistory
 
 from forge import __version__
 from forge.config import load_config
+from forge.providers import OllamaProvider
 from forge.runtime import ForgeRuntime
 from forge.server import ForgeApiServer
 from forge.tasks import Task
@@ -30,6 +31,7 @@ def main(argv: list[str] | None = None) -> int:
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("doctor", help="Check local prerequisites")
     subparsers.add_parser("chat", help="Start an interactive local Forge chat")
+    subparsers.add_parser("models", help="List models available from Ollama")
     config_parser = subparsers.add_parser("config", help="Inspect configuration")
     config_parser.add_argument("action", choices=["show"])
     subparsers.add_parser("telegram", help="Run the Telegram remote-control transport")
@@ -39,10 +41,22 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "doctor":
         ollama = config.providers.get("ollama", {}).get("base_url", "http://localhost:11434")
+        provider = OllamaProvider(ollama, config.providers.get("ollama", {}).get("default_model", "llama3.2"))
         print(f"Forge {__version__}")
         print(f"Default provider: {config.default_provider}")
         print(f"Ollama endpoint: {ollama}")
+        print("Ollama: available" if provider.is_available() else "Ollama: unavailable")
         print("Telegram: configured" if config.telegram.bot_token else "Telegram: not configured")
+        return 0
+
+    if args.command == "models":
+        ollama = config.providers.get("ollama", {})
+        provider = OllamaProvider(ollama.get("base_url", "http://localhost:11434"), ollama.get("default_model", "llama3.2"))
+        try:
+            models = provider.list_models()
+        except Exception as error:
+            parser.error(f"Could not reach Ollama: {error}")
+        console.print("\n".join(models) if models else "No Ollama models are installed.")
         return 0
 
     if args.command == "config":
