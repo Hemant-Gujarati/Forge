@@ -42,7 +42,12 @@ class ForgeApiServer:
                             HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"}
                         )
                     tasks = [
-                        {"id": task.id, "status": task.status}
+                        {
+                            "id": task.id,
+                            "status": task.status,
+                            "result": task.result,
+                            "error": task.error,
+                        }
                         for task in api.tasks.recent()
                     ]
                     return self.respond(HTTPStatus.OK, {"tasks": tasks})
