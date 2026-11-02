@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from threading import Lock
 from uuid import uuid4
@@ -20,12 +21,15 @@ class Approval:
 
 
 class ApprovalStore:
-    def __init__(self, database: Path | str) -> None:
+    def __init__(self, database: Path | str, expiry_minutes: int = 60) -> None:
+        if expiry_minutes < 1:
+            raise ValueError("Approval expiry must be at least one minute")
+        self.expiry_minutes = expiry_minutes
         self.connection = sqlite3.connect(database, check_same_thread=False)
         self.lock = Lock()
         with self.lock:
             self.connection.execute(
-                "CREATE TABLE IF NOT EXISTS approvals (id TEXT PRIMARY KEY, action TEXT, summary TEXT, payload TEXT NOT NULL DEFAULT '{}', status TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP)"
+                "CREATE TABLE IF NOT EXISTS approvals (id TEXT PRIMARY KEY, action TEXT, summary TEXT, payload TEXT NOT NULL DEFAULT '{}', status TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, expires_at TEXT)"
             )
             columns = {
                 row[1]
@@ -35,21 +39,29 @@ class ApprovalStore:
                 self.connection.execute(
                     "ALTER TABLE approvals ADD COLUMN payload TEXT NOT NULL DEFAULT '{}'"
                 )
+            if "expires_at" not in columns:
+                self.connection.execute(
+                    "ALTER TABLE approvals ADD COLUMN expires_at TEXT"
+                )
             self.connection.commit()
 
     def request(
         self, action: str, summary: str, payload: dict[str, object] | None = None
     ) -> Approval:
         approval = Approval(uuid4().hex[:8], action, summary, payload or {}, "pending")
+        expires_at = (
+            datetime.now(UTC) + timedelta(minutes=self.expiry_minutes)
+        ).isoformat()
         with self.lock:
             self.connection.execute(
-                "INSERT INTO approvals(id, action, summary, payload, status) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO approvals(id, action, summary, payload, status, expires_at) VALUES (?, ?, ?, ?, ?, ?)",
                 (
                     approval.id,
                     approval.action,
                     approval.summary,
                     json.dumps(approval.payload),
                     approval.status,
+                    expires_at,
                 ),
             )
             self.connection.commit()
@@ -57,6 +69,7 @@ class ApprovalStore:
 
     def list(self, status: str = "pending") -> list[Approval]:
         with self.lock:
+            self._expire_pending()
             rows = self.connection.execute(
                 "SELECT id, action, summary, payload, status FROM approvals WHERE status = ? ORDER BY created_at DESC, rowid DESC",
                 (status,),
@@ -68,6 +81,7 @@ class ApprovalStore:
     def decide(self, approval_id: str, approve: bool) -> Approval | None:
         status = "approved" if approve else "rejected"
         with self.lock:
+            self._expire_pending()
             cursor = self.connection.execute(
                 "UPDATE approvals SET status = ? WHERE id = ? AND status = 'pending'",
                 (status, approval_id),
@@ -80,3 +94,11 @@ class ApprovalStore:
                 (approval_id,),
             ).fetchone()
         return Approval(row[0], row[1], row[2], json.loads(row[3]), row[4])
+
+    def _expire_pending(self) -> None:
+        now = datetime.now(UTC).isoformat()
+        self.connection.execute(
+            "UPDATE approvals SET status = 'expired' WHERE status = 'pending' AND expires_at IS NOT NULL AND expires_at <= ?",
+            (now,),
+        )
+        self.connection.commit()
