@@ -16,8 +16,23 @@ class FileTools:
         ".env.local",
         "forge.yaml",
         "config.yaml",
+        "credentials",
+        "credentials.json",
+        "secrets.json",
+        "secrets.yaml",
+        "secrets.yml",
+        "service-account.json",
+        "id_rsa",
+        "id_ed25519",
     }
-    PRIVATE_DIRECTORIES: ClassVar[set[str]] = {".git", ".forge"}
+    PRIVATE_DIRECTORIES: ClassVar[set[str]] = {
+        ".git",
+        ".forge",
+        ".ssh",
+        ".aws",
+        ".azure",
+        ".gnupg",
+    }
 
     def __init__(self, guard: WorkspaceGuard, max_read_bytes: int = 1_000_000) -> None:
         self.guard = guard
@@ -58,8 +73,7 @@ class FileTools:
         return [
             entry.name
             for entry in sorted(target.iterdir(), key=lambda item: item.name.lower())
-            if entry.name.lower() not in self.PRIVATE_NAMES
-            and entry.name.lower() not in self.PRIVATE_DIRECTORIES
+            if not self._is_private_path(entry)
         ]
 
     def find_files(self, pattern: str, path: str = ".", limit: int = 200) -> list[str]:
@@ -115,7 +129,12 @@ class FileTools:
             resolved = self.guard.resolve(path)
         except (OSError, PermissionError):
             return True
-        return any(
-            part.lower() in self.PRIVATE_NAMES | self.PRIVATE_DIRECTORIES
-            for part in resolved.parts
-        )
+        for part in resolved.parts:
+            name = part.lower()
+            if (
+                name in self.PRIVATE_NAMES | self.PRIVATE_DIRECTORIES
+                or name.startswith(".env.")
+                or name.endswith((".p12", ".pfx", ".key"))
+            ):
+                return True
+        return False

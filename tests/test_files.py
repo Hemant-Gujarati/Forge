@@ -28,6 +28,25 @@ def test_blocks_private_config_and_state(tmp_path: Path) -> None:
         files.read_file(str(tmp_path / ".forge" / "sessions.db"))
 
 
+@pytest.mark.parametrize(
+    "private_path",
+    [".env.production", ".aws/credentials", ".ssh/id_ed25519", "private.key"],
+)
+def test_blocks_common_secret_paths(tmp_path: Path, private_path: str) -> None:
+    target = tmp_path / private_path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("sensitive", encoding="utf-8")
+    files = FileTools(WorkspaceGuard([str(tmp_path)], tmp_path))
+
+    with pytest.raises(PermissionError):
+        files.read_file(str(target))
+    with pytest.raises(PermissionError):
+        files.write_file(str(target), "replacement")
+
+    assert str(target) not in files.find_files("*")
+    assert target.name not in files.list_directory(str(target.parent))
+
+
 def test_hides_private_items_from_directory_listing(tmp_path: Path) -> None:
     (tmp_path / "forge.yaml").write_text("secret: value", encoding="utf-8")
     (tmp_path / ".forge").mkdir()
