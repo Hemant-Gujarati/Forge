@@ -69,8 +69,8 @@ def validate_config(config: ForgeConfig) -> None:
         not isinstance(root, str) or not root.strip() for root in config.workspace_roots
     ):
         raise ValueError("workspace_roots must contain at least one non-empty path")
-    if config.safety.mode not in {"ask", "safe", "auto"}:
-        raise ValueError("safety.mode must be one of: ask, safe, auto")
+    if config.safety.mode != "ask":
+        raise ValueError("safety.mode currently supports only: ask")
     if not 1 <= config.telegram.poll_timeout_seconds <= 50:
         raise ValueError("telegram.poll_timeout_seconds must be between 1 and 50")
     if not 1 <= config.server.port <= 65535:

@@ -42,7 +42,7 @@ The desktop API requires TLS when bound beyond localhost, and the Android app ac
 
 ## Safety and Git
 
-Forge limits file tools to configured `workspace_roots`. It hides common local secret paths. File changes, shell commands, and Git commits require approval; every shell command still requires approval even when `safety.allow_shell: true`.
+Forge limits file tools to configured `workspace_roots`. It hides common local secret paths. File changes, shell commands, and Git commits require approval; every shell command still requires approval even when `safety.allow_shell: true`. Only `safety.mode: ask` is currently implemented.
 
 Forge's agent can request commits for approval. The project itself is committed and pushed at reviewed milestones; it does not automatically push each edit.
 

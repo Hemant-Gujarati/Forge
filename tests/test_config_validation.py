@@ -26,3 +26,11 @@ def test_rejects_provider_without_an_implemented_adapter(tmp_path: Path) -> None
     config_file.write_text("default_provider: openai\n", encoding="utf-8")
     with pytest.raises(ValueError, match="Only the local Ollama provider"):
         load_config(config_file)
+
+
+@pytest.mark.parametrize("mode", ["safe", "auto"])
+def test_rejects_unimplemented_safety_modes(tmp_path: Path, mode: str) -> None:
+    config_file = tmp_path / "forge.yaml"
+    config_file.write_text(f"safety:\n  mode: {mode}\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="safety.mode currently supports only: ask"):
+        load_config(config_file)
