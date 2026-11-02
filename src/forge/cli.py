@@ -107,7 +107,41 @@ def main(argv: list[str] | None = None) -> int:
             if prompt in {"/exit", "/quit"}:
                 break
             if prompt == "/help":
-                console.print("Commands: /help, /clear, /tasks, /exit")
+                console.print(
+                    "Commands: /help, /clear, /tasks, /models, /model <name>, /exit"
+                )
+                continue
+            if prompt == "/models":
+                try:
+                    models = runtime.agent.provider.list_models()
+                    console.print(
+                        "\n".join(models)
+                        if models
+                        else "No Ollama models are installed."
+                    )
+                except httpx.HTTPError as error:
+                    console.print(f"[red]Could not reach Ollama:[/red] {error}")
+                continue
+            if prompt.startswith("/model"):
+                _, *parts = prompt.split(maxsplit=1)
+                if not parts:
+                    console.print(
+                        f"Current model: {runtime.agent.provider.model}. Use /model <name> to switch."
+                    )
+                    continue
+                model = parts[0].strip()
+                try:
+                    models = runtime.agent.provider.list_models()
+                except httpx.HTTPError as error:
+                    console.print(f"[red]Could not reach Ollama:[/red] {error}")
+                    continue
+                if model not in models:
+                    console.print(
+                        f"[red]Model not found:[/red] {model}. Use /models to list installed models."
+                    )
+                    continue
+                runtime.agent.provider.model = model
+                console.print(f"Switched to model: {model}")
                 continue
             if prompt == "/clear":
                 runtime.agent.sessions.clear(session_id)
