@@ -38,5 +38,7 @@ Copy `forge.example.yaml` to `forge.yaml` to configure Forge locally. Never comm
 
 GitHub Actions runs Ruff and pytest on every push and pull request.
 
+Start the interactive CLI with `forge chat`; use `forge models` to see installed Ollama models.
+
 To enable Telegram, set `telegram.enabled` to `true`, add the token from BotFather, and add your numeric Telegram chat ID to `allowed_chat_ids`.
 
