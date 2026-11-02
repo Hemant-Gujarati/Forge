@@ -36,7 +36,7 @@ class ForgeRuntime:
         self.agent = ForgeAgent(
             provider, SessionStore(state_directory / "sessions.db"), tools
         )
-        self.tasks = TaskQueue()
+        self.tasks = TaskQueue(database=state_directory / "tasks.db")
 
     def submit(
         self,
