@@ -37,7 +37,10 @@ def main(argv: list[str] | None = None) -> int:
     subparsers.add_parser("telegram", help="Run the Telegram remote-control transport")
     subparsers.add_parser("serve", help="Run the local API for the native Android app")
     args = parser.parse_args(argv)
-    config = load_config(_config_path(args.config))
+    try:
+        config = load_config(_config_path(args.config))
+    except (TypeError, ValueError) as error:
+        parser.error(f"Invalid Forge configuration: {error}")
 
     if args.command == "doctor":
         ollama = config.providers.get("ollama", {}).get("base_url", "http://localhost:11434")
