@@ -10,3 +10,5 @@ The app currently checks a desktop connection, submits coding tasks, lists recen
 
 Open the `android` folder in Android Studio. Use JDK 17 and install Android SDK Platform 36 when prompted. This module uses the Compose setup recommended by Android's official documentation.
 
+Run Android UI tests from Android Studio or with `gradlew :app:connectedDebugAndroidTest` after connecting an emulator/device.
+
