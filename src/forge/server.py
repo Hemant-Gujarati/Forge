@@ -14,6 +14,8 @@ from forge.tasks import Task, TaskQueue
 
 
 class ForgeApiServer:
+    MAX_REQUEST_BODY_BYTES = 20_000
+
     def __init__(
         self,
         tasks: TaskQueue,
@@ -144,14 +146,13 @@ class ForgeApiServer:
                     )
                 try:
                     length = int(self.headers.get("Content-Length", "0"))
-                    if length > 20_000:
-                        raise ValueError("Request body is too large")
-                    payload = json.loads(self.rfile.read(length))
-                    prompt = payload.get("prompt", "")
-                    if not isinstance(prompt, str) or not prompt.strip():
-                        raise ValueError("A non-empty prompt is required")
-                    task = api.submit_task(prompt.strip())
-                except (ValueError, json.JSONDecodeError) as error:
+                    if not 1 <= length <= api.MAX_REQUEST_BODY_BYTES:
+                        raise ValueError(
+                            "Request body size must be between 1 and 20000 bytes"
+                        )
+                    prompt = api.parse_task_prompt(self.rfile.read(length))
+                    task = api.submit_task(prompt)
+                except (TypeError, ValueError) as error:
                     return self.respond(HTTPStatus.BAD_REQUEST, {"error": str(error)})
                 self.respond(
                     HTTPStatus.ACCEPTED, {"id": task.id, "status": task.status}
@@ -169,6 +170,19 @@ class ForgeApiServer:
                 return
 
         return ThreadingHTTPServer((host, port), Handler)
+
+    @staticmethod
+    def parse_task_prompt(body: bytes) -> str:
+        try:
+            payload = json.loads(body)
+        except json.JSONDecodeError as error:
+            raise ValueError("Request body must be valid JSON") from error
+        if not isinstance(payload, dict):
+            raise TypeError("Request body must be a JSON object")
+        prompt = payload.get("prompt", "")
+        if not isinstance(prompt, str) or not prompt.strip():
+            raise ValueError("A non-empty prompt is required")
+        return prompt.strip()
 
     def is_authorized(self, header: str) -> bool:
         expected = f"Bearer {self.access_token}"
