@@ -156,7 +156,10 @@ def main(argv: list[str] | None = None) -> int:
             return f"Task {task.id} queued. I will send the result here."
 
         print("Forge Telegram transport is running. Press Ctrl+C to stop.")
-        bot.run(handler)
+        try:
+            bot.run(handler)
+        except KeyboardInterrupt:
+            print("Forge Telegram transport stopped.")
         return 0
     if args.command == "serve":
         if not config.server.access_token:

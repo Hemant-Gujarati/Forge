@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from time import sleep
 from dataclasses import dataclass
 from typing import Any
 
@@ -66,13 +67,20 @@ class TelegramBot:
         offset: int | None = None
         allowed = set(self.config.allowed_chat_ids)
         while True:
-            updates = self.get_updates(offset)
+            try:
+                updates = self.get_updates(offset)
+            except (httpx.HTTPError, RuntimeError):
+                sleep(2)
+                continue
             for update in updates:
                 offset = update["update_id"] + 1
             for message in self.messages(updates):
                 if message.chat_id not in allowed:
                     continue
-                reply = handler(message)
-                if reply:
-                    self.send_message(message.chat_id, reply)
+                try:
+                    reply = handler(message)
+                    if reply:
+                        self.send_message(message.chat_id, reply)
+                except (httpx.HTTPError, RuntimeError):
+                    continue
 
