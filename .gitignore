@@ -8,4 +8,8 @@ dist/
 .forge/
 forge.yaml
 *.db
+.gradle/
+.idea/
+local.properties
+*.iml
 
