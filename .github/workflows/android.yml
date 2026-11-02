@@ -29,7 +29,8 @@ jobs:
         uses: android-actions/setup-android@v4
 
       - name: Install required Android packages
-        run: sdkmanager "platforms;android-37" "build-tools;36.0.0"
+        # API 37 is Android 17 preview; include Canary packages in sdkmanager.
+        run: sdkmanager "platforms;android-37" "build-tools;36.0.0" --channel=3
 
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v6
