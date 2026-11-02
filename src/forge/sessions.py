@@ -33,3 +33,8 @@ class SessionStore:
             ).fetchall()
         return [{"role": role, "content": content} for role, content in reversed(rows)]
 
+    def clear(self, session: str) -> None:
+        with self.lock:
+            self.connection.execute("DELETE FROM messages WHERE session = ?", (session,))
+            self.connection.commit()
+

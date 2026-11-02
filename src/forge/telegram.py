@@ -46,7 +46,10 @@ class TelegramBot:
         return self._request("getUpdates", payload)
 
     def send_message(self, chat_id: int, text: str) -> None:
-        self._request("sendMessage", {"chat_id": chat_id, "text": text})
+        chunk_size = 4000
+        chunks = [text[index : index + chunk_size] for index in range(0, len(text), chunk_size)] or [""]
+        for chunk in chunks:
+            self._request("sendMessage", {"chat_id": chat_id, "text": chunk})
 
     def messages(self, updates: list[dict[str, Any]]) -> list[TelegramMessage]:
         result: list[TelegramMessage] = []

@@ -86,8 +86,7 @@ def main(argv: list[str] | None = None) -> int:
                 console.print("Commands: /help, /clear, /tasks, /exit")
                 continue
             if prompt == "/clear":
-                runtime.agent.sessions.connection.execute("DELETE FROM messages WHERE session = ?", (session_id,))
-                runtime.agent.sessions.connection.commit()
+                runtime.agent.sessions.clear(session_id)
                 console.print("Conversation cleared.")
                 continue
             if prompt == "/tasks":
@@ -112,7 +111,7 @@ def main(argv: list[str] | None = None) -> int:
 
         def complete(chat_id: int, task: Task) -> None:
             if task.status == "completed":
-                bot.send_message(chat_id, task.result or "Task completed with no response.")
+                bot.send_message(chat_id, f"Task {task.id} completed.\n\n{task.result or 'No response.'}")
             else:
                 bot.send_message(chat_id, f"Task {task.id} failed: {task.error}")
 
