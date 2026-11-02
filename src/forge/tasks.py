@@ -5,6 +5,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from threading import Lock
+from typing import Callable
 from uuid import uuid4
 
 
@@ -26,7 +27,7 @@ class TaskQueue:
     def __post_init__(self) -> None:
         self._executor = ThreadPoolExecutor(max_workers=self.workers, thread_name_prefix="forge-task")
 
-    def submit(self, operation: callable, on_complete: callable) -> Task:
+    def submit(self, operation: Callable[[], str], on_complete: Callable[[Task], None]) -> Task:
         task = Task(id=uuid4().hex[:8])
         with self._lock:
             self._tasks[task.id] = task
