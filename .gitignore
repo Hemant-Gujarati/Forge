@@ -8,6 +8,25 @@ dist/
 .forge/
 forge.yaml
 *.db
+
+# Local credentials and private keys
+.env
+.env.*
+!.env.example
+.aws/
+.ssh/
+credentials
+credentials.json
+secrets.json
+secrets.yaml
+secrets.yml
+service-account.json
+id_rsa
+id_ed25519
+*.key
+*.p12
+*.pfx
+
 .gradle/
 .kotlin/
 .idea/
