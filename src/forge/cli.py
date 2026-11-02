@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import secrets
 from pathlib import Path
 
 import httpx
@@ -41,6 +42,7 @@ def main(argv: list[str] | None = None) -> int:
     config_parser.add_argument("action", choices=["show"])
     subparsers.add_parser("telegram", help="Run the Telegram remote-control transport")
     subparsers.add_parser("serve", help="Run the local API for the native Android app")
+    subparsers.add_parser("token", help="Generate a secure Android API access token")
     args = parser.parse_args(argv)
     try:
         config = load_config(_config_path(args.config))
@@ -84,6 +86,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Provider: {config.default_provider}")
         print(f"Safety mode: {config.safety.mode}")
         print(f"Workspace roots: {', '.join(config.workspace_roots)}")
+        return 0
+    if args.command == "token":
+        print(secrets.token_urlsafe(32))
         return 0
     if args.command == "chat":
         runtime = ForgeRuntime(config, Path.cwd())

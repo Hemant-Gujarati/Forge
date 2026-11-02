@@ -36,6 +36,8 @@ forge telegram
 
 Copy `forge.example.yaml` to `forge.yaml` to configure Forge locally. Never commit bot tokens or API keys.
 
+For Android API access, generate a random bearer token with `forge token` and save it as `server.access_token` in your local `forge.yaml`. Keep that value private; Forge does not save or upload the generated token for you.
+
 GitHub Actions runs Ruff and pytest on every push and pull request.
 
 Start the interactive CLI with `forge chat`; use `forge models` to see installed Ollama models.
