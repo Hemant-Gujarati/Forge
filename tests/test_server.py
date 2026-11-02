@@ -57,6 +57,8 @@ def test_api_requires_authorization(api_client: httpx.Client) -> None:
 
     assert response.status_code == 401
     assert response.json() == {"error": "unauthorized"}
+    assert response.headers["cache-control"] == "no-store"
+    assert response.headers["x-content-type-options"] == "nosniff"
 
 
 def test_api_accepts_valid_task_prompt(api_client: httpx.Client) -> None:
