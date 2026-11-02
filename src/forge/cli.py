@@ -6,6 +6,7 @@ import argparse
 from pathlib import Path
 
 import httpx
+import yaml
 from prompt_toolkit import PromptSession
 from prompt_toolkit.history import FileHistory
 from rich.console import Console
@@ -43,7 +44,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         config = load_config(_config_path(args.config))
-    except (TypeError, ValueError) as error:
+    except (TypeError, ValueError, yaml.YAMLError) as error:
         parser.error(f"Invalid Forge configuration: {error}")
 
     if args.command == "doctor":
