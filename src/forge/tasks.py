@@ -48,7 +48,11 @@ class TaskQueue:
                 with self._lock:
                     task.error = str(error)
                     task.status = "failed"
-            on_complete(task)
+            try:
+                on_complete(task)
+            except Exception:  # noqa: BLE001 - notification failures do not change task outcome.
+                # A failed notification must not corrupt the recorded task result.
+                return
 
         future = self._executor.submit(run)
         with self._lock:
