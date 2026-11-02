@@ -115,6 +115,10 @@ def validate_config(config: ForgeConfig) -> None:
         raise ValueError("server.port must be between 1 and 65535")
     if not isinstance(config.server.access_token, str):
         raise TypeError("server.access_token must be a string")
+    if config.server.access_token and len(config.server.access_token) < 32:
+        raise ValueError(
+            "server.access_token must be at least 32 characters; use `forge token` to generate one"
+        )
     if not isinstance(config.server.tls_cert_path, str) or not isinstance(
         config.server.tls_key_path, str
     ):

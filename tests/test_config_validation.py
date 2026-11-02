@@ -47,6 +47,7 @@ def test_rejects_unimplemented_safety_modes(tmp_path: Path, mode: str) -> None:
         ),
         ("telegram:\n  allowed_chat_ids: [true]\n", "allowed_chat_ids"),
         ("telegram:\n  poll_timeout_seconds: nope\n", "poll_timeout_seconds"),
+        ("server:\n  access_token: short\n", "at least 32 characters"),
         ("server:\n  tls_cert_path: cert.pem\n", "Set both server TLS"),
     ],
 )
