@@ -19,3 +19,10 @@ def test_rejects_enabled_telegram_without_allowlist(tmp_path: Path) -> None:
     )
     with pytest.raises(ValueError, match="allowed_chat_ids"):
         load_config(config_file)
+
+
+def test_rejects_provider_without_an_implemented_adapter(tmp_path: Path) -> None:
+    config_file = tmp_path / "forge.yaml"
+    config_file.write_text("default_provider: openai\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="Only the local Ollama provider"):
+        load_config(config_file)

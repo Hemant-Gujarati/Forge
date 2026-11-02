@@ -61,8 +61,10 @@ def load_config(path: Path) -> ForgeConfig:
 
 
 def validate_config(config: ForgeConfig) -> None:
-    if config.default_provider not in {"ollama", "openai", "anthropic", "gemini"}:
-        raise ValueError(f"Unsupported default provider: {config.default_provider}")
+    if config.default_provider != "ollama":
+        raise ValueError(
+            "Only the local Ollama provider is currently supported; paid providers are not configured."
+        )
     if not config.workspace_roots or any(
         not isinstance(root, str) or not root.strip() for root in config.workspace_roots
     ):

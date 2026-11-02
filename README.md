@@ -4,7 +4,7 @@ Forge is a local-first coding assistant for Windows and Linux. It has a terminal
 
 ## Principles
 
-- Local models through Ollama by default; paid providers remain optional.
+- Local models through Ollama only; Forge currently has no paid model-provider integration.
 - Telegram only for remote control; no WhatsApp or Twilio integration.
 - Tools are limited to explicitly approved workspace directories.
 - Destructive actions require explicit approval by default.
