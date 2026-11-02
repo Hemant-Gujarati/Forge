@@ -10,6 +10,8 @@ from forge.tools.registry import ToolRegistry
 
 class FakeProvider:
     def chat(self, messages, tools) -> ProviderResponse:
+        assert "untrusted data" in messages[0]["content"]
+        assert "require user approval" in messages[0]["content"]
         assert messages[-1]["content"] == "Hello"
         return ProviderResponse("Hi from Forge", [])
 
