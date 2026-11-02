@@ -22,3 +22,12 @@ def test_ignores_non_text_update() -> None:
         config, client=httpx.Client(transport=httpx.MockTransport(lambda request: None))
     )
     assert bot.messages([{"message": {"chat": {"id": 42}, "photo": []}}]) == []
+
+
+def test_splits_telegram_messages_by_utf16_size() -> None:
+    text = "🙂" * 2500
+    chunks = TelegramBot._split_message(text)
+
+    assert len(chunks) == 2
+    assert "".join(chunks) == text
+    assert all(len(chunk.encode("utf-16-le")) // 2 <= 4000 for chunk in chunks)

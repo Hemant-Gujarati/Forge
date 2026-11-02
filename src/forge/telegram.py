@@ -49,13 +49,28 @@ class TelegramBot:
         return self._request("getUpdates", payload)
 
     def send_message(self, chat_id: int, text: str) -> None:
-        chunk_size = 4000
-        chunks = [
-            text[index : index + chunk_size]
-            for index in range(0, len(text), chunk_size)
-        ] or [""]
-        for chunk in chunks:
+        for chunk in self._split_message(text):
             self._request("sendMessage", {"chat_id": chat_id, "text": chunk})
+
+    @staticmethod
+    def _split_message(text: str, max_utf16_units: int = 4000) -> list[str]:
+        """Split messages within Telegram's UTF-16 code-unit size limit."""
+        if max_utf16_units < 2:
+            raise ValueError("max_utf16_units must be at least 2")
+        chunks: list[str] = []
+        current: list[str] = []
+        units = 0
+        for character in text:
+            character_units = 2 if ord(character) > 0xFFFF else 1
+            if units + character_units > max_utf16_units:
+                chunks.append("".join(current))
+                current = []
+                units = 0
+            current.append(character)
+            units += character_units
+        if current or not chunks:
+            chunks.append("".join(current))
+        return chunks
 
     def messages(self, updates: list[dict[str, Any]]) -> list[TelegramMessage]:
         result: list[TelegramMessage] = []
