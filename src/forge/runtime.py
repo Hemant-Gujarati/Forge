@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from collections.abc import Callable
 from pathlib import Path
 
@@ -83,5 +84,12 @@ class ForgeRuntime:
                     f"{approval.action} approved. No executor is available yet.",
                 )
             return approval, result
-        except (KeyError, OSError, PermissionError, ValueError) as error:
+        except (
+            KeyError,
+            OSError,
+            PermissionError,
+            RuntimeError,
+            ValueError,
+            subprocess.TimeoutExpired,
+        ) as error:
             return approval, f"{approval.action} was approved but failed: {error}"
