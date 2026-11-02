@@ -4,6 +4,11 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+from rich.console import Console
+from rich.markdown import Markdown
+from rich.panel import Panel
+from prompt_toolkit import PromptSession
+from prompt_toolkit.history import FileHistory
 
 from forge import __version__
 from forge.config import load_config
@@ -11,6 +16,8 @@ from forge.runtime import ForgeRuntime
 from forge.server import ForgeApiServer
 from forge.tasks import Task
 from forge.telegram import TelegramBot, TelegramMessage
+
+console = Console()
 
 
 def _config_path(value: str | None) -> Path:
@@ -22,6 +29,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--config", help="Path to Forge YAML configuration")
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("doctor", help="Check local prerequisites")
+    subparsers.add_parser("chat", help="Start an interactive local Forge chat")
     config_parser = subparsers.add_parser("config", help="Inspect configuration")
     config_parser.add_argument("action", choices=["show"])
     subparsers.add_parser("telegram", help="Run the Telegram remote-control transport")
@@ -41,6 +49,43 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Provider: {config.default_provider}")
         print(f"Safety mode: {config.safety.mode}")
         print(f"Workspace roots: {', '.join(config.workspace_roots)}")
+        return 0
+    if args.command == "chat":
+        runtime = ForgeRuntime(config, Path.cwd())
+        session_id = f"cli:{Path.cwd().resolve()}"
+        history_dir = Path.home() / ".forge"
+        history_dir.mkdir(parents=True, exist_ok=True)
+        prompt_session: PromptSession[str] = PromptSession(history=FileHistory(str(history_dir / "history")))
+        console.print(Panel.fit(f"Forge {__version__} · local Ollama chat", border_style="cyan"))
+        console.print("Type /help for commands. Type /exit to quit.")
+        while True:
+            try:
+                prompt = prompt_session.prompt("You> ").strip()
+            except (EOFError, KeyboardInterrupt):
+                console.print("Goodbye.")
+                break
+            if not prompt:
+                continue
+            if prompt in {"/exit", "/quit"}:
+                break
+            if prompt == "/help":
+                console.print("Commands: /help, /clear, /tasks, /exit")
+                continue
+            if prompt == "/clear":
+                runtime.agent.sessions.connection.execute("DELETE FROM messages WHERE session = ?", (session_id,))
+                runtime.agent.sessions.connection.commit()
+                console.print("Conversation cleared.")
+                continue
+            if prompt == "/tasks":
+                for task in runtime.tasks.recent():
+                    console.print(f"{task.id}: {task.status}")
+                continue
+            try:
+                with console.status("Forge is thinking…", spinner="dots"):
+                    answer = runtime.agent.respond(session_id, prompt)
+                console.print(Markdown(answer))
+            except Exception as error:
+                console.print(f"[red]Error:[/red] {error}")
         return 0
     if args.command == "telegram":
         if not config.telegram.enabled:
