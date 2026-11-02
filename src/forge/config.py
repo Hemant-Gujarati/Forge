@@ -65,18 +65,64 @@ def validate_config(config: ForgeConfig) -> None:
         raise ValueError(
             "Only the local Ollama provider is currently supported; paid providers are not configured."
         )
-    if not config.workspace_roots or any(
-        not isinstance(root, str) or not root.strip() for root in config.workspace_roots
+    if (
+        not isinstance(config.workspace_roots, list)
+        or not config.workspace_roots
+        or any(
+            not isinstance(root, str) or not root.strip()
+            for root in config.workspace_roots
+        )
     ):
         raise ValueError("workspace_roots must contain at least one non-empty path")
+    if not isinstance(config.providers, dict):
+        raise TypeError("providers must be a mapping")
+    ollama = config.providers.get("ollama", {})
+    if not isinstance(ollama, dict):
+        raise TypeError("providers.ollama must be a mapping")
+    for key, default in (
+        ("base_url", "http://localhost:11434"),
+        ("default_model", "llama3.2"),
+    ):
+        value = ollama.get(key, default)
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"providers.ollama.{key} must be a non-empty string")
     if config.safety.mode != "ask":
         raise ValueError("safety.mode currently supports only: ask")
-    if not 1 <= config.telegram.poll_timeout_seconds <= 50:
+    if not isinstance(config.safety.allow_shell, bool):
+        raise TypeError("safety.allow_shell must be a boolean")
+    if not isinstance(config.telegram.enabled, bool):
+        raise TypeError("telegram.enabled must be a boolean")
+    if not isinstance(config.telegram.bot_token, str):
+        raise TypeError("telegram.bot_token must be a string")
+    if not isinstance(config.telegram.allowed_chat_ids, list) or any(
+        isinstance(chat_id, bool) or not isinstance(chat_id, int)
+        for chat_id in config.telegram.allowed_chat_ids
+    ):
+        raise ValueError("telegram.allowed_chat_ids must be a list of integer IDs")
+    if (
+        isinstance(config.telegram.poll_timeout_seconds, bool)
+        or not isinstance(config.telegram.poll_timeout_seconds, int)
+        or not 1 <= config.telegram.poll_timeout_seconds <= 50
+    ):
         raise ValueError("telegram.poll_timeout_seconds must be between 1 and 50")
-    if not 1 <= config.server.port <= 65535:
+    if not isinstance(config.server.host, str) or not config.server.host.strip():
+        raise ValueError("server.host must be a non-empty string")
+    if (
+        isinstance(config.server.port, bool)
+        or not isinstance(config.server.port, int)
+        or not 1 <= config.server.port <= 65535
+    ):
         raise ValueError("server.port must be between 1 and 65535")
+    if not isinstance(config.server.access_token, str):
+        raise TypeError("server.access_token must be a string")
+    if not isinstance(config.server.tls_cert_path, str) or not isinstance(
+        config.server.tls_key_path, str
+    ):
+        raise TypeError("server TLS paths must be strings")
+    if bool(config.server.tls_cert_path) != bool(config.server.tls_key_path):
+        raise ValueError("Set both server TLS certificate and key paths, or neither")
     if config.telegram.enabled and (
-        not config.telegram.bot_token or not config.telegram.allowed_chat_ids
+        not config.telegram.bot_token.strip() or not config.telegram.allowed_chat_ids
     ):
         raise ValueError(
             "Telegram requires bot_token and at least one allowed_chat_ids entry"
