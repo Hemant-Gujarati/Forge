@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hmac
 import json
+import socket
 import ssl
 from collections.abc import Callable
 from http import HTTPStatus
@@ -146,7 +147,15 @@ class ForgeApiServer:
                     )
                 try:
                     length = int(self.headers.get("Content-Length", "0"))
-                    if not 1 <= length <= api.MAX_REQUEST_BODY_BYTES:
+                    if length < 1:
+                        raise ValueError(
+                            "Request body size must be between 1 and 20000 bytes"
+                        )
+                    if length > api.MAX_REQUEST_BODY_BYTES:
+                        # Consume a bounded amount so Windows clients receive the 400
+                        # response instead of a connection reset due to unread request data.
+                        self.rfile.read(min(length, api.MAX_REQUEST_BODY_BYTES + 1))
+                        self.close_connection = True
                         raise ValueError(
                             "Request body size must be between 1 and 20000 bytes"
                         )
@@ -171,6 +180,12 @@ class ForgeApiServer:
             def log_message(self, format: str, *args: object) -> None:
                 return
 
+        if ":" in host:
+
+            class IPv6Server(ThreadingHTTPServer):
+                address_family = socket.AF_INET6
+
+            return IPv6Server((host, port), Handler)
         return ThreadingHTTPServer((host, port), Handler)
 
     @staticmethod

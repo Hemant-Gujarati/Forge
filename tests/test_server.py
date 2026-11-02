@@ -1,3 +1,4 @@
+import socket
 from threading import Thread
 
 import httpx
@@ -35,6 +36,14 @@ def test_authorization_requires_matching_bearer_token() -> None:
     assert api.is_authorized("Bearer secret")
     assert not api.is_authorized("Bearer wrong")
     assert not api.is_authorized("")
+
+
+def test_api_server_uses_ipv6_for_ipv6_localhost() -> None:
+    server = ForgeApiServer(TaskQueue(), "secret").create_server("::1", 0)
+    try:
+        assert server.address_family == socket.AF_INET6
+    finally:
+        server.server_close()
 
 
 @pytest.mark.parametrize(
