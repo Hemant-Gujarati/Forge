@@ -64,6 +64,19 @@ fun ForgeApp() {
                     placeholder = { Text("https://forge-pc.example") },
                     singleLine = true,
                 )
+                Button(
+                    onClick = {
+                        api.clearPairing(context)
+                        desktopAddress = ""
+                        accessToken = ""
+                        tasks = emptyList()
+                        approvals = emptyList()
+                        latestTaskId = ""
+                        status = "Pairing cleared."
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = desktopAddress.isNotBlank() || accessToken.isNotBlank(),
+                ) { Text("Forget this desktop") }
                 OutlinedTextField(
                     value = accessToken,
                     onValueChange = { accessToken = it },

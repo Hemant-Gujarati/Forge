@@ -70,6 +70,13 @@ class ForgeApiClient {
         return (preferences.getString("endpoint", "") ?: "") to (preferences.getString("token", "") ?: "")
     }
 
+    fun clearPairing(context: android.content.Context) {
+        context.getSharedPreferences("forge_pairing", android.content.Context.MODE_PRIVATE)
+            .edit()
+            .clear()
+            .apply()
+    }
+
     private fun <T> request(
         endpoint: String,
         path: String,
