@@ -2,16 +2,28 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import ClassVar
+
 from forge.safety import WorkspaceGuard
 
 
 class FileTools:
+    PRIVATE_NAMES: ClassVar[set[str]] = {
+        ".env",
+        ".env.local",
+        "forge.yaml",
+        "config.yaml",
+    }
+    PRIVATE_DIRECTORIES: ClassVar[set[str]] = {".git", ".forge"}
+
     def __init__(self, guard: WorkspaceGuard, max_read_bytes: int = 1_000_000) -> None:
         self.guard = guard
         self.max_read_bytes = max_read_bytes
 
     def read_file(self, path: str) -> str:
         target = self.guard.resolve(path)
+        self._ensure_not_private(target)
         if not target.is_file():
             raise FileNotFoundError(f"File not found: {target}")
         if target.stat().st_size > self.max_read_bytes:
@@ -20,12 +32,14 @@ class FileTools:
 
     def write_file(self, path: str, content: str) -> str:
         target = self.guard.resolve(path)
+        self._ensure_not_private(target)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
         return f"Wrote {len(content)} characters to {target}"
 
     def edit_file(self, path: str, old_text: str, new_text: str) -> str:
         target = self.guard.resolve(path)
+        self._ensure_not_private(target)
         content = self.read_file(str(target))
         matches = content.count(old_text)
         if matches != 1:
@@ -42,4 +56,14 @@ class FileTools:
         return [
             entry.name
             for entry in sorted(target.iterdir(), key=lambda item: item.name.lower())
+            if entry.name.lower() not in self.PRIVATE_NAMES
+            and entry.name.lower() not in self.PRIVATE_DIRECTORIES
         ]
+
+    def _ensure_not_private(self, target: Path) -> None:
+        if target.name.lower() in self.PRIVATE_NAMES or any(
+            part.lower() in self.PRIVATE_DIRECTORIES for part in target.parts
+        ):
+            raise PermissionError(
+                f"Forge file tools cannot access private path: {target.name}"
+            )
