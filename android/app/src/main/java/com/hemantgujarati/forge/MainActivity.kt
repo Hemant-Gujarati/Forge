@@ -25,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,14 +37,16 @@ class MainActivity : ComponentActivity() {
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 fun ForgeApp() {
-    var desktopAddress by remember { mutableStateOf("") }
-    var accessToken by remember { mutableStateOf("") }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val api = remember { ForgeApiClient() }
+    val savedPairing = remember { api.loadPairing(context) }
+    var desktopAddress by remember { mutableStateOf(savedPairing.first) }
+    var accessToken by remember { mutableStateOf(savedPairing.second) }
     var prompt by remember { mutableStateOf("") }
     var latestTaskId by remember { mutableStateOf("") }
     var approvals by remember { mutableStateOf(emptyList<ForgeApiClient.ApprovalItem>()) }
     var tasks by remember { mutableStateOf(emptyList<ForgeApiClient.TaskItem>()) }
     var status by remember { mutableStateOf("Not connected") }
-    val api = remember { ForgeApiClient() }
     val mainThread = remember { Handler(Looper.getMainLooper()) }
     MaterialTheme {
         Scaffold(topBar = { TopAppBar(title = { Text("Forge") }) }) { padding ->
@@ -66,6 +69,7 @@ fun ForgeApp() {
                     onValueChange = { accessToken = it },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Access token") },
+                    visualTransformation = PasswordVisualTransformation(),
                     singleLine = true,
                 )
                 Button(
@@ -94,6 +98,7 @@ fun ForgeApp() {
                 }
                 Button(
                     onClick = {
+                        api.savePairing(context, desktopAddress, accessToken)
                         status = "Checking desktop…"
                         Thread {
                             val result = api.health(desktopAddress)

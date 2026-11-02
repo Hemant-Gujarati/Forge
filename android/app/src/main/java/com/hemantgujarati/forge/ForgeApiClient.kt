@@ -57,6 +57,19 @@ class ForgeApiClient {
         }
     }
 
+    fun savePairing(context: android.content.Context, endpoint: String, token: String) {
+        context.getSharedPreferences("forge_pairing", android.content.Context.MODE_PRIVATE)
+            .edit()
+            .putString("endpoint", endpoint.trimEnd('/'))
+            .putString("token", token)
+            .apply()
+    }
+
+    fun loadPairing(context: android.content.Context): Pair<String, String> {
+        val preferences = context.getSharedPreferences("forge_pairing", android.content.Context.MODE_PRIVATE)
+        return (preferences.getString("endpoint", "") ?: "") to (preferences.getString("token", "") ?: "")
+    }
+
     private fun <T> request(
         endpoint: String,
         path: String,
