@@ -42,6 +42,25 @@ class ToolRegistry:
                 ["path", "old_text", "new_text"],
             ),
             self._definition("list_directory", {"path": {"type": "string"}}, []),
+            self._definition(
+                "find_files",
+                {
+                    "pattern": {"type": "string"},
+                    "path": {"type": "string"},
+                    "limit": {"type": "integer"},
+                },
+                ["pattern"],
+            ),
+            self._definition(
+                "search_text",
+                {
+                    "pattern": {"type": "string"},
+                    "path": {"type": "string"},
+                    "file_pattern": {"type": "string"},
+                    "limit": {"type": "integer"},
+                },
+                ["pattern"],
+            ),
             self._definition("git_status", {}, []),
             self._definition("git_diff", {"staged": {"type": "boolean"}}, []),
             self._definition("git_log", {"count": {"type": "integer"}}, []),
@@ -100,6 +119,19 @@ class ToolRegistry:
                 )
             elif name == "list_directory":
                 result = self.files.list_directory(str(arguments.get("path", ".")))
+            elif name == "find_files":
+                result = self.files.find_files(
+                    str(arguments["pattern"]),
+                    str(arguments.get("path", ".")),
+                    int(arguments.get("limit", 200)),
+                )
+            elif name == "search_text":
+                result = self.files.search_text(
+                    str(arguments["pattern"]),
+                    str(arguments.get("path", ".")),
+                    str(arguments.get("file_pattern", "*")),
+                    int(arguments.get("limit", 100)),
+                )
             elif name == "git_status":
                 result = self.git.status()
             elif name == "git_diff":

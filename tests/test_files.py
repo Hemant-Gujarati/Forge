@@ -34,3 +34,17 @@ def test_hides_private_items_from_directory_listing(tmp_path: Path) -> None:
     (tmp_path / "app.py").write_text("pass", encoding="utf-8")
     files = FileTools(WorkspaceGuard([str(tmp_path)], tmp_path))
     assert files.list_directory(".") == ["app.py"]
+
+
+def test_search_and_discovery_skip_private_paths(tmp_path: Path) -> None:
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "app.py").write_text("needle here", encoding="utf-8")
+    (tmp_path / "forge.yaml").write_text("needle secret", encoding="utf-8")
+    state = tmp_path / ".forge"
+    state.mkdir()
+    (state / "secret.py").write_text("needle secret", encoding="utf-8")
+    files = FileTools(WorkspaceGuard([str(tmp_path)], tmp_path))
+    assert files.find_files("*.py") == [str(tmp_path / "src" / "app.py")]
+    assert files.search_text("needle", file_pattern="*.py") == [
+        f"{tmp_path / 'src' / 'app.py'}:1:needle here"
+    ]

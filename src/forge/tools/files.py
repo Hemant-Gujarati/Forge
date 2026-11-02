@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import fnmatch
+import re
 from pathlib import Path
 from typing import ClassVar
 
@@ -60,10 +62,60 @@ class FileTools:
             and entry.name.lower() not in self.PRIVATE_DIRECTORIES
         ]
 
+    def find_files(self, pattern: str, path: str = ".", limit: int = 200) -> list[str]:
+        root = self.guard.resolve(path)
+        if not root.is_dir():
+            raise NotADirectoryError(f"Directory not found: {root}")
+        matches: list[str] = []
+        for candidate in root.rglob("*"):
+            if candidate.is_symlink() or self._is_private_path(candidate):
+                continue
+            if candidate.is_file() and fnmatch.fnmatch(candidate.name, pattern):
+                matches.append(str(candidate))
+                if len(matches) >= min(max(limit, 1), 1000):
+                    break
+        return matches
+
+    def search_text(
+        self, pattern: str, path: str = ".", file_pattern: str = "*", limit: int = 100
+    ) -> list[str]:
+        root = self.guard.resolve(path)
+        if not root.is_dir():
+            raise NotADirectoryError(f"Directory not found: {root}")
+        regex = re.compile(pattern)
+        results: list[str] = []
+        for candidate in root.rglob("*"):
+            if candidate.is_symlink() or self._is_private_path(candidate):
+                continue
+            if not candidate.is_file() or not fnmatch.fnmatch(
+                candidate.name, file_pattern
+            ):
+                continue
+            if candidate.stat().st_size > self.max_read_bytes:
+                continue
+            try:
+                lines = candidate.read_text(encoding="utf-8").splitlines()
+            except UnicodeDecodeError:
+                continue
+            for line_number, line in enumerate(lines, start=1):
+                if regex.search(line):
+                    results.append(f"{candidate}:{line_number}:{line[:500]}")
+                    if len(results) >= min(max(limit, 1), 1000):
+                        return results
+        return results
+
     def _ensure_not_private(self, target: Path) -> None:
-        if target.name.lower() in self.PRIVATE_NAMES or any(
-            part.lower() in self.PRIVATE_DIRECTORIES for part in target.parts
-        ):
+        if self._is_private_path(target):
             raise PermissionError(
                 f"Forge file tools cannot access private path: {target.name}"
             )
+
+    def _is_private_path(self, path: Path) -> bool:
+        try:
+            resolved = self.guard.resolve(path)
+        except (OSError, PermissionError):
+            return True
+        return any(
+            part.lower() in self.PRIVATE_NAMES | self.PRIVATE_DIRECTORIES
+            for part in resolved.parts
+        )
