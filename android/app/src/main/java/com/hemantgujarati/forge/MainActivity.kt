@@ -108,6 +108,21 @@ fun ForgeApp() {
                     Text("Task ${task.id}: ${task.status}")
                     task.result?.let { Text(it) }
                     task.error?.let { Text("Error: $it") }
+                    if (task.status == "queued") {
+                        Button(
+                            onClick = {
+                                Thread {
+                                    val result = api.cancelTask(desktopAddress, accessToken, task.id)
+                                    mainThread.post {
+                                        status = result.fold(
+                                            onSuccess = { "Task ${task.id}: $it" },
+                                            onFailure = { "Cancellation failed: ${it.message}" },
+                                        )
+                                    }
+                                }.start()
+                            },
+                        ) { Text("Cancel ${task.id}") }
+                    }
                 }
                 Button(
                     onClick = {

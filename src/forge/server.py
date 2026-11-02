@@ -48,7 +48,10 @@ class ForgeApiServer:
                     task = api.tasks.get(task_id)
                     if task is None:
                         return self.respond(HTTPStatus.NOT_FOUND, {"error": "task_not_found"})
-                    return self.respond(HTTPStatus.OK, task.__dict__)
+                    return self.respond(
+                        HTTPStatus.OK,
+                        {"id": task.id, "status": task.status, "result": task.result, "error": task.error},
+                    )
                 if self.path == "/v1/approvals":
                     if not api.is_authorized(self.headers.get("Authorization", "")):
                         return self.respond(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
