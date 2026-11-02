@@ -16,14 +16,20 @@ class CommandResult:
 
 
 class ShellTools:
-    def __init__(self, guard: WorkspaceGuard, enabled: bool, max_timeout_seconds: int = 60) -> None:
+    def __init__(
+        self, guard: WorkspaceGuard, enabled: bool, max_timeout_seconds: int = 60
+    ) -> None:
         self.guard = guard
         self.enabled = enabled
         self.max_timeout_seconds = max_timeout_seconds
 
-    def run_command(self, command: str, path: str = ".", timeout: int = 60) -> CommandResult:
+    def run_command(
+        self, command: str, path: str = ".", timeout: int = 60
+    ) -> CommandResult:
         if not self.enabled:
-            raise PermissionError("Shell access is disabled. Set safety.allow_shell: true to enable it.")
+            raise PermissionError(
+                "Shell access is disabled. Set safety.allow_shell: true to enable it."
+            )
         if not command.strip():
             raise ValueError("Command cannot be empty")
         cwd = self.guard.resolve(path)

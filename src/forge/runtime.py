@@ -9,9 +9,9 @@ from forge.agent import ForgeAgent
 from forge.approvals import Approval, ApprovalStore
 from forge.config import ForgeConfig
 from forge.providers import OllamaProvider
+from forge.safety import WorkspaceGuard
 from forge.sessions import SessionStore
 from forge.tasks import Task, TaskQueue
-from forge.safety import WorkspaceGuard
 from forge.tools.files import FileTools
 from forge.tools.git import GitTools
 from forge.tools.registry import ToolRegistry
@@ -33,16 +33,25 @@ class ForgeRuntime:
         self.git = GitTools(guard)
         self.shell = ShellTools(guard, config.safety.allow_shell)
         tools = ToolRegistry(self.files, self.git, self.approvals, self.shell)
-        self.agent = ForgeAgent(provider, SessionStore(state_directory / "sessions.db"), tools)
+        self.agent = ForgeAgent(
+            provider, SessionStore(state_directory / "sessions.db"), tools
+        )
         self.tasks = TaskQueue()
 
-    def submit(self, session_id: str, prompt: str, on_complete: Callable[[Task], None] | None = None) -> Task:
+    def submit(
+        self,
+        session_id: str,
+        prompt: str,
+        on_complete: Callable[[Task], None] | None = None,
+    ) -> Task:
         return self.tasks.submit(
             lambda: self.agent.respond(session_id, prompt),
             on_complete or (lambda task: None),
         )
 
-    def resolve_approval(self, approval_id: str, approve: bool) -> tuple[Approval | None, str]:
+    def resolve_approval(
+        self, approval_id: str, approve: bool
+    ) -> tuple[Approval | None, str]:
         approval = self.approvals.decide(approval_id, approve)
         if approval is None:
             return None, "No pending approval found with that ID."
@@ -50,7 +59,9 @@ class ForgeRuntime:
             return approval, f"{approval.action} rejected."
         try:
             if approval.action == "write_file":
-                result = self.files.write_file(str(approval.payload["path"]), str(approval.payload["content"]))
+                result = self.files.write_file(
+                    str(approval.payload["path"]), str(approval.payload["content"])
+                )
             elif approval.action == "edit_file":
                 result = self.files.edit_file(
                     str(approval.payload["path"]),
@@ -67,7 +78,10 @@ class ForgeRuntime:
             elif approval.action == "git_commit":
                 result = self.git.commit(str(approval.payload["message"]))
             else:
-                return approval, f"{approval.action} approved. No executor is available yet."
+                return (
+                    approval,
+                    f"{approval.action} approved. No executor is available yet.",
+                )
             return approval, result
         except (KeyError, OSError, PermissionError, ValueError) as error:
             return approval, f"{approval.action} was approved but failed: {error}"

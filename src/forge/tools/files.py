@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from forge.safety import WorkspaceGuard
 
 
@@ -31,7 +29,9 @@ class FileTools:
         content = self.read_file(str(target))
         matches = content.count(old_text)
         if matches != 1:
-            raise ValueError(f"Expected exactly one matching text block; found {matches}")
+            raise ValueError(
+                f"Expected exactly one matching text block; found {matches}"
+            )
         target.write_text(content.replace(old_text, new_text, 1), encoding="utf-8")
         return f"Edited {target}"
 
@@ -39,4 +39,7 @@ class FileTools:
         target = self.guard.resolve(path)
         if not target.is_dir():
             raise NotADirectoryError(f"Directory not found: {target}")
-        return [entry.name for entry in sorted(target.iterdir(), key=lambda item: item.name.lower())]
+        return [
+            entry.name
+            for entry in sorted(target.iterdir(), key=lambda item: item.name.lower())
+        ]

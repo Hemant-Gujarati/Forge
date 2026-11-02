@@ -35,6 +35,7 @@ class SessionStore:
 
     def clear(self, session: str) -> None:
         with self.lock:
-            self.connection.execute("DELETE FROM messages WHERE session = ?", (session,))
+            self.connection.execute(
+                "DELETE FROM messages WHERE session = ?", (session,)
+            )
             self.connection.commit()
-

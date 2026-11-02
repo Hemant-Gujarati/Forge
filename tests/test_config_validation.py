@@ -14,6 +14,8 @@ def test_rejects_invalid_server_port(tmp_path: Path) -> None:
 
 def test_rejects_enabled_telegram_without_allowlist(tmp_path: Path) -> None:
     config_file = tmp_path / "forge.yaml"
-    config_file.write_text("telegram:\n  enabled: true\n  bot_token: test\n", encoding="utf-8")
+    config_file.write_text(
+        "telegram:\n  enabled: true\n  bot_token: test\n", encoding="utf-8"
+    )
     with pytest.raises(ValueError, match="allowed_chat_ids"):
         load_config(config_file)

@@ -7,7 +7,10 @@ from forge.safety import WorkspaceGuard
 
 def test_allows_path_inside_root(tmp_path: Path) -> None:
     guard = WorkspaceGuard([str(tmp_path)], tmp_path)
-    assert guard.resolve(tmp_path / "project" / "file.py") == tmp_path / "project" / "file.py"
+    assert (
+        guard.resolve(tmp_path / "project" / "file.py")
+        == tmp_path / "project" / "file.py"
+    )
 
 
 def test_rejects_path_outside_root(tmp_path: Path) -> None:

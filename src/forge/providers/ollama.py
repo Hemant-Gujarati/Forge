@@ -21,13 +21,21 @@ class ProviderResponse:
 
 
 class OllamaProvider:
-    def __init__(self, base_url: str, model: str, client: httpx.Client | None = None) -> None:
+    def __init__(
+        self, base_url: str, model: str, client: httpx.Client | None = None
+    ) -> None:
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.client = client or httpx.Client(timeout=120)
 
-    def chat(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]] | None = None) -> ProviderResponse:
-        request: dict[str, Any] = {"model": self.model, "messages": messages, "stream": False}
+    def chat(
+        self, messages: list[dict[str, Any]], tools: list[dict[str, Any]] | None = None
+    ) -> ProviderResponse:
+        request: dict[str, Any] = {
+            "model": self.model,
+            "messages": messages,
+            "stream": False,
+        }
         if tools:
             request["tools"] = tools
         response = self.client.post(
@@ -38,16 +46,23 @@ class OllamaProvider:
         payload: dict[str, Any] = response.json()
         message = payload["message"]
         calls = [
-            ToolCall(name=call["function"]["name"], arguments=call["function"].get("arguments", {}))
+            ToolCall(
+                name=call["function"]["name"],
+                arguments=call["function"].get("arguments", {}),
+            )
             for call in message.get("tool_calls", [])
         ]
-        return ProviderResponse(content=str(message.get("content", "")), tool_calls=calls)
+        return ProviderResponse(
+            content=str(message.get("content", "")), tool_calls=calls
+        )
 
     def list_models(self) -> list[str]:
         response = self.client.get(f"{self.base_url}/api/tags")
         response.raise_for_status()
         payload: dict[str, Any] = response.json()
-        return [str(item["name"]) for item in payload.get("models", []) if item.get("name")]
+        return [
+            str(item["name"]) for item in payload.get("models", []) if item.get("name")
+        ]
 
     def is_available(self) -> bool:
         try:
@@ -55,4 +70,3 @@ class OllamaProvider:
             return response.is_success
         except httpx.HTTPError:
             return False
-

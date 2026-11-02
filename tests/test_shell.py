@@ -13,4 +13,9 @@ def test_blocks_commands_when_disabled(tmp_path: Path) -> None:
 
 
 def test_caps_timeout() -> None:
-    assert ShellTools(WorkspaceGuard(["."], Path.cwd()), enabled=True, max_timeout_seconds=20).max_timeout_seconds == 20
+    assert (
+        ShellTools(
+            WorkspaceGuard(["."], Path.cwd()), enabled=True, max_timeout_seconds=20
+        ).max_timeout_seconds
+        == 20
+    )

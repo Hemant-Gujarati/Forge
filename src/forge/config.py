@@ -47,7 +47,7 @@ def load_config(path: Path) -> ForgeConfig:
         return ForgeConfig()
     raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     if not isinstance(raw, dict):
-        raise ValueError("Configuration root must be a YAML mapping")
+        raise TypeError("Configuration root must be a YAML mapping")
     config = ForgeConfig(
         default_provider=raw.get("default_provider", "ollama"),
         workspace_roots=raw.get("workspace_roots", ["."]),
@@ -63,7 +63,9 @@ def load_config(path: Path) -> ForgeConfig:
 def validate_config(config: ForgeConfig) -> None:
     if config.default_provider not in {"ollama", "openai", "anthropic", "gemini"}:
         raise ValueError(f"Unsupported default provider: {config.default_provider}")
-    if not config.workspace_roots or any(not isinstance(root, str) or not root.strip() for root in config.workspace_roots):
+    if not config.workspace_roots or any(
+        not isinstance(root, str) or not root.strip() for root in config.workspace_roots
+    ):
         raise ValueError("workspace_roots must contain at least one non-empty path")
     if config.safety.mode not in {"ask", "safe", "auto"}:
         raise ValueError("safety.mode must be one of: ask, safe, auto")
@@ -71,6 +73,9 @@ def validate_config(config: ForgeConfig) -> None:
         raise ValueError("telegram.poll_timeout_seconds must be between 1 and 50")
     if not 1 <= config.server.port <= 65535:
         raise ValueError("server.port must be between 1 and 65535")
-    if config.telegram.enabled and (not config.telegram.bot_token or not config.telegram.allowed_chat_ids):
-        raise ValueError("Telegram requires bot_token and at least one allowed_chat_ids entry")
-
+    if config.telegram.enabled and (
+        not config.telegram.bot_token or not config.telegram.allowed_chat_ids
+    ):
+        raise ValueError(
+            "Telegram requires bot_token and at least one allowed_chat_ids entry"
+        )

@@ -8,7 +8,6 @@ from forge.providers.ollama import OllamaProvider
 from forge.sessions import SessionStore
 from forge.tools.registry import ToolRegistry
 
-
 SYSTEM_PROMPT = (
     "You are Forge, a local-first coding assistant. Use available read-only tools to inspect a "
     "workspace when needed. Be concise and never claim to have changed files unless a tool confirmed it."
@@ -16,7 +15,9 @@ SYSTEM_PROMPT = (
 
 
 class ForgeAgent:
-    def __init__(self, provider: OllamaProvider, sessions: SessionStore, tools: ToolRegistry) -> None:
+    def __init__(
+        self, provider: OllamaProvider, sessions: SessionStore, tools: ToolRegistry
+    ) -> None:
         self.provider = provider
         self.sessions = sessions
         self.tools = tools
@@ -30,10 +31,21 @@ class ForgeAgent:
             if not response.tool_calls:
                 self.sessions.add(session_id, "assistant", response.content)
                 return response.content
-            messages.append({"role": "assistant", "content": response.content, "tool_calls": [
-                {"function": {"name": call.name, "arguments": call.arguments}} for call in response.tool_calls
-            ]})
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": response.content,
+                    "tool_calls": [
+                        {"function": {"name": call.name, "arguments": call.arguments}}
+                        for call in response.tool_calls
+                    ],
+                }
+            )
             for call in response.tool_calls:
-                messages.append({"role": "tool", "content": self.tools.execute(call.name, call.arguments)})
+                messages.append(
+                    {
+                        "role": "tool",
+                        "content": self.tools.execute(call.name, call.arguments),
+                    }
+                )
         return "I stopped after reaching the safe tool-call limit. Please narrow the request."
-

@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from time import sleep
 from dataclasses import dataclass
+from time import sleep
 from typing import Any
 
 import httpx
@@ -22,7 +22,9 @@ class TelegramMessage:
 class TelegramBot:
     """Small Telegram Bot API wrapper using outbound HTTPS polling only."""
 
-    def __init__(self, config: TelegramConfig, client: httpx.Client | None = None) -> None:
+    def __init__(
+        self, config: TelegramConfig, client: httpx.Client | None = None
+    ) -> None:
         if not config.bot_token:
             raise ValueError("Telegram bot_token is required")
         self.config = config
@@ -48,7 +50,10 @@ class TelegramBot:
 
     def send_message(self, chat_id: int, text: str) -> None:
         chunk_size = 4000
-        chunks = [text[index : index + chunk_size] for index in range(0, len(text), chunk_size)] or [""]
+        chunks = [
+            text[index : index + chunk_size]
+            for index in range(0, len(text), chunk_size)
+        ] or [""]
         for chunk in chunks:
             self._request("sendMessage", {"chat_id": chat_id, "text": chunk})
 
@@ -83,4 +88,3 @@ class TelegramBot:
                         self.send_message(message.chat_id, reply)
                 except (httpx.HTTPError, RuntimeError):
                     continue
-

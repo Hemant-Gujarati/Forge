@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from threading import Lock
-from typing import Callable
 from uuid import uuid4
 
 
@@ -25,9 +25,13 @@ class TaskQueue:
     _lock: Lock = field(default_factory=Lock)
 
     def __post_init__(self) -> None:
-        self._executor = ThreadPoolExecutor(max_workers=self.workers, thread_name_prefix="forge-task")
+        self._executor = ThreadPoolExecutor(
+            max_workers=self.workers, thread_name_prefix="forge-task"
+        )
 
-    def submit(self, operation: Callable[[], str], on_complete: Callable[[Task], None]) -> Task:
+    def submit(
+        self, operation: Callable[[], str], on_complete: Callable[[Task], None]
+    ) -> Task:
         task = Task(id=uuid4().hex[:8])
         with self._lock:
             self._tasks[task.id] = task
@@ -40,7 +44,7 @@ class TaskQueue:
                 with self._lock:
                     task.result = result
                     task.status = "completed"
-            except Exception as error:  # Remote errors must be returned, not crash polling.
+            except Exception as error:  # noqa: BLE001 - task failures must remain visible to remote clients.
                 with self._lock:
                     task.error = str(error)
                     task.status = "failed"
@@ -63,8 +67,12 @@ class TaskQueue:
         with self._lock:
             task = self._tasks.get(task_id)
             future = self._futures.get(task_id)
-            if task is None or future is None or task.status != "queued" or not future.cancel():
+            if (
+                task is None
+                or future is None
+                or task.status != "queued"
+                or not future.cancel()
+            ):
                 return None
             task.status = "cancelled"
             return task
-

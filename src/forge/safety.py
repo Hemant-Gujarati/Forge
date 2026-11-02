@@ -16,4 +16,3 @@ class WorkspaceGuard:
         if not any(resolved.is_relative_to(root) for root in self.roots):
             raise PermissionError(f"Path outside approved workspace: {resolved}")
         return resolved
-

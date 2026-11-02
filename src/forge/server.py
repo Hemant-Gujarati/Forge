@@ -5,13 +5,12 @@ from __future__ import annotations
 import hmac
 import json
 import ssl
+from collections.abc import Callable
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from collections.abc import Callable
-
-from forge.tasks import Task, TaskQueue
 from forge.approvals import ApprovalStore
+from forge.tasks import Task, TaskQueue
 
 
 class ForgeApiServer:
@@ -21,7 +20,8 @@ class ForgeApiServer:
         access_token: str,
         submit_task: Callable[[str], Task] | None = None,
         approvals: ApprovalStore | None = None,
-        resolve_approval: Callable[[str, bool], tuple[object | None, str]] | None = None,
+        resolve_approval: Callable[[str, bool], tuple[object | None, str]]
+        | None = None,
     ) -> None:
         self.tasks = tasks
         self.access_token = access_token
@@ -33,63 +33,110 @@ class ForgeApiServer:
         api = self
 
         class Handler(BaseHTTPRequestHandler):
-            def do_GET(self) -> None:  # noqa: N802
+            def do_GET(self) -> None:
                 if self.path == "/health":
                     return self.respond(HTTPStatus.OK, {"status": "ok"})
                 if self.path == "/v1/tasks":
                     if not api.is_authorized(self.headers.get("Authorization", "")):
-                        return self.respond(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
-                    tasks = [{"id": task.id, "status": task.status} for task in api.tasks.recent()]
+                        return self.respond(
+                            HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"}
+                        )
+                    tasks = [
+                        {"id": task.id, "status": task.status}
+                        for task in api.tasks.recent()
+                    ]
                     return self.respond(HTTPStatus.OK, {"tasks": tasks})
                 if self.path.startswith("/v1/tasks/"):
                     if not api.is_authorized(self.headers.get("Authorization", "")):
-                        return self.respond(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
+                        return self.respond(
+                            HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"}
+                        )
                     task_id = self.path.removeprefix("/v1/tasks/")
                     task = api.tasks.get(task_id)
                     if task is None:
-                        return self.respond(HTTPStatus.NOT_FOUND, {"error": "task_not_found"})
+                        return self.respond(
+                            HTTPStatus.NOT_FOUND, {"error": "task_not_found"}
+                        )
                     return self.respond(
                         HTTPStatus.OK,
-                        {"id": task.id, "status": task.status, "result": task.result, "error": task.error},
+                        {
+                            "id": task.id,
+                            "status": task.status,
+                            "result": task.result,
+                            "error": task.error,
+                        },
                     )
                 if self.path == "/v1/approvals":
                     if not api.is_authorized(self.headers.get("Authorization", "")):
-                        return self.respond(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
-                    approvals = [] if api.approvals is None else [approval.__dict__ for approval in api.approvals.list()]
+                        return self.respond(
+                            HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"}
+                        )
+                    approvals = (
+                        []
+                        if api.approvals is None
+                        else [approval.__dict__ for approval in api.approvals.list()]
+                    )
                     return self.respond(HTTPStatus.OK, {"approvals": approvals})
                 self.respond(HTTPStatus.NOT_FOUND, {"error": "not_found"})
 
-            def do_POST(self) -> None:  # noqa: N802
+            def do_POST(self) -> None:
                 if self.path.startswith("/v1/tasks/") and self.path.endswith("/cancel"):
                     if not api.is_authorized(self.headers.get("Authorization", "")):
-                        return self.respond(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
-                    task_id = self.path.removeprefix("/v1/tasks/").removesuffix("/cancel")
+                        return self.respond(
+                            HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"}
+                        )
+                    task_id = self.path.removeprefix("/v1/tasks/").removesuffix(
+                        "/cancel"
+                    )
                     task = api.tasks.cancel(task_id)
                     if task is None:
-                        return self.respond(HTTPStatus.CONFLICT, {"error": "task_cannot_be_cancelled"})
+                        return self.respond(
+                            HTTPStatus.CONFLICT, {"error": "task_cannot_be_cancelled"}
+                        )
                     return self.respond(HTTPStatus.OK, task.__dict__)
                 if self.path.startswith("/v1/approvals/"):
                     if not api.is_authorized(self.headers.get("Authorization", "")):
-                        return self.respond(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
+                        return self.respond(
+                            HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"}
+                        )
                     if api.approvals is None:
-                        return self.respond(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "approvals_unavailable"})
+                        return self.respond(
+                            HTTPStatus.SERVICE_UNAVAILABLE,
+                            {"error": "approvals_unavailable"},
+                        )
                     parts = self.path.split("/")
                     if len(parts) != 5 or parts[-1] not in {"approve", "reject"}:
-                        return self.respond(HTTPStatus.NOT_FOUND, {"error": "not_found"})
+                        return self.respond(
+                            HTTPStatus.NOT_FOUND, {"error": "not_found"}
+                        )
                     if api.resolve_approval is None:
-                        approval = api.approvals.decide(parts[-2], parts[-1] == "approve")
+                        approval = api.approvals.decide(
+                            parts[-2], parts[-1] == "approve"
+                        )
                         message = "Approval updated."
                     else:
-                        approval, message = api.resolve_approval(parts[-2], parts[-1] == "approve")
+                        approval, message = api.resolve_approval(
+                            parts[-2], parts[-1] == "approve"
+                        )
                     if approval is None:
-                        return self.respond(HTTPStatus.NOT_FOUND, {"error": "pending_approval_not_found"})
-                    return self.respond(HTTPStatus.OK, {"approval": approval.__dict__, "message": message})
+                        return self.respond(
+                            HTTPStatus.NOT_FOUND,
+                            {"error": "pending_approval_not_found"},
+                        )
+                    return self.respond(
+                        HTTPStatus.OK,
+                        {"approval": approval.__dict__, "message": message},
+                    )
                 if self.path != "/v1/tasks":
                     return self.respond(HTTPStatus.NOT_FOUND, {"error": "not_found"})
                 if not api.is_authorized(self.headers.get("Authorization", "")):
-                    return self.respond(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
+                    return self.respond(
+                        HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"}
+                    )
                 if api.submit_task is None:
-                    return self.respond(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "tasks_unavailable"})
+                    return self.respond(
+                        HTTPStatus.SERVICE_UNAVAILABLE, {"error": "tasks_unavailable"}
+                    )
                 try:
                     length = int(self.headers.get("Content-Length", "0"))
                     if length > 20_000:
@@ -101,7 +148,9 @@ class ForgeApiServer:
                     task = api.submit_task(prompt.strip())
                 except (ValueError, json.JSONDecodeError) as error:
                     return self.respond(HTTPStatus.BAD_REQUEST, {"error": str(error)})
-                self.respond(HTTPStatus.ACCEPTED, {"id": task.id, "status": task.status})
+                self.respond(
+                    HTTPStatus.ACCEPTED, {"id": task.id, "status": task.status}
+                )
 
             def respond(self, status: HTTPStatus, body: dict[str, object]) -> None:
                 encoded = json.dumps(body).encode("utf-8")
@@ -120,7 +169,9 @@ class ForgeApiServer:
         expected = f"Bearer {self.access_token}"
         return bool(self.access_token) and hmac.compare_digest(header, expected)
 
-    def serve(self, host: str, port: int, tls_cert_path: str = "", tls_key_path: str = "") -> None:
+    def serve(
+        self, host: str, port: int, tls_cert_path: str = "", tls_key_path: str = ""
+    ) -> None:
         server = self.create_server(host, port)
         if tls_cert_path and tls_key_path:
             context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
