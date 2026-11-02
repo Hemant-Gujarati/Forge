@@ -63,7 +63,15 @@ class ForgeApiClient {
     }
 
     fun savePairing(context: android.content.Context, endpoint: String, token: String) {
-        context.getSharedPreferences("forge_pairing", android.content.Context.MODE_PRIVATE)
+        androidx.security.crypto.EncryptedSharedPreferences.create(
+            context,
+            "forge_pairing",
+            androidx.security.crypto.MasterKey.Builder(context)
+                .setKeyScheme(androidx.security.crypto.MasterKey.KeyScheme.AES256_GCM)
+                .build(),
+            androidx.security.crypto.EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            androidx.security.crypto.EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+        )
             .edit()
             .putString("endpoint", endpoint.trimEnd('/'))
             .putString("token", token)
@@ -71,12 +79,28 @@ class ForgeApiClient {
     }
 
     fun loadPairing(context: android.content.Context): Pair<String, String> {
-        val preferences = context.getSharedPreferences("forge_pairing", android.content.Context.MODE_PRIVATE)
+        val preferences = androidx.security.crypto.EncryptedSharedPreferences.create(
+            context,
+            "forge_pairing",
+            androidx.security.crypto.MasterKey.Builder(context)
+                .setKeyScheme(androidx.security.crypto.MasterKey.KeyScheme.AES256_GCM)
+                .build(),
+            androidx.security.crypto.EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            androidx.security.crypto.EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+        )
         return (preferences.getString("endpoint", "") ?: "") to (preferences.getString("token", "") ?: "")
     }
 
     fun clearPairing(context: android.content.Context) {
-        context.getSharedPreferences("forge_pairing", android.content.Context.MODE_PRIVATE)
+        androidx.security.crypto.EncryptedSharedPreferences.create(
+            context,
+            "forge_pairing",
+            androidx.security.crypto.MasterKey.Builder(context)
+                .setKeyScheme(androidx.security.crypto.MasterKey.KeyScheme.AES256_GCM)
+                .build(),
+            androidx.security.crypto.EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            androidx.security.crypto.EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+        )
             .edit()
             .clear()
             .apply()
